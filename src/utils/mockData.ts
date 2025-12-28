@@ -58,20 +58,12 @@ const users: User[] = [
 
 // Mock stories
 export const mockStories: Story[] = [
-  {
-    id: 'own',
-    user: {
-      id: 'own',
-      name: 'Your Story',
-      title: '',
-      avatar: 'add-circle',
-    },
-    isOwn: true,
-  },
-  ...users.slice(0, 6).map((user) => ({
-    id: user.id,
-    user,
-  })),
+  { id: 's1', user: users[0], timestamp: '2h', content: 'Just launched our new product! 🚀', backgroundColor: '#667eea' },
+  { id: 's2', user: users[1], timestamp: '5h', content: 'Amazing team meeting today 💼', backgroundColor: '#f093fb' },
+  { id: 's3', user: users[2], timestamp: '8h', content: 'New design system released! 🎨', backgroundColor: '#fa709a' },
+  { id: 's4', user: users[3], timestamp: '12h', content: 'Marketing campaign success! 📈', backgroundColor: '#4facfe' },
+  { id: 's5', user: users[4], timestamp: '1d', content: 'Data insights are incredible 📊', backgroundColor: '#43e97b' },
+  { id: 's6', user: users[5], timestamp: '1d', content: 'Exciting company updates! 🎉', backgroundColor: '#764ba2' },
 ];
 
 // Mock posts with LinkedIn-style professional content including video reels
@@ -95,7 +87,7 @@ export const mockPosts: Post[] = [
       'Adorable cat doing funny things! 🐱 This little furball always knows how to brighten my day. #CatsOfLinkedIn #WorkLifeBalance #PetLove',
     isReel: true,
     videoIcon: 'paw-outline',
-    videoUri: require('../../../assets/videos/cat.mp4'),
+    videoUri: require('../../assets/videos/cat.mp4'),
     views: 45200,
     likes: 3421,
     comments: 234,
@@ -130,7 +122,7 @@ export const mockPosts: Post[] = [
       'Meet my office buddy! 🐶 Dogs make the best coworkers. This is why remote work is amazing! #DogsOfLinkedIn #RemoteWork #OfficeLife',
     isReel: true,
     videoIcon: 'paw-outline',
-    videoUri: require('../../../assets/videos/dog.mp4'),
+    videoUri: require('../../assets/videos/dog.mp4'),
     views: 67800,
     likes: 4567,
     comments: 312,

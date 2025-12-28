@@ -1,35 +1,13 @@
-import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { StyleSheet, Text, View } from 'react-native';
-import ScreenWrapper from '../../components/layout/ScreenWrapper';
-import { useTheme } from '../../context/ThemeContext';
-import { TabParamList } from '../../navigation/types';
+import React from 'react';
+import { View, Text, Button } from 'react-native';
 
-type Props = BottomTabScreenProps<TabParamList, 'Messages'>;
-
-const MessagesScreen = (_: Props) => {
-  const { colors, typography } = useTheme();
-
+const MessagesScreen = ({ navigation }: any) => {
   return (
-    <ScreenWrapper>
-      <View style={styles.center}>
-        <Text
-          style={{ color: colors.text, fontSize: typography.size.lg }}
-          allowFontScaling
-        >
-          Messages Screen
-        </Text>
-      </View>
-    </ScreenWrapper>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text>Messages Screen</Text>
+      <Button title="Go to Chat" onPress={() => navigation.navigate('Chat')} />
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
-
 export default MessagesScreen;
-

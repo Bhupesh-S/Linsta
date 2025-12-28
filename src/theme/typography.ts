@@ -1,16 +1,18 @@
-export const typography = {
-  fontFamily: 'System',
-  size: {
-    xs: 12,
-    sm: 14,
-    md: 16,
-    lg: 20,
-    xl: 24,
+const typography = {
+  h1: {
+    fontSize: 32,
+    fontWeight: 'bold',
   },
-  weight: {
-    regular: '400',
-    medium: '500',
-    bold: '700',
+  h2: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  body: {
+    fontSize: 16,
+  },
+  caption: {
+    fontSize: 12,
   },
 };
 
+export default typography;

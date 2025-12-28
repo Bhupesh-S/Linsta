@@ -1,42 +1,28 @@
-import { createContext, ReactNode, useContext, useMemo, useState } from 'react';
+import React, { createContext, useState, useContext } from 'react';
 import { Appearance } from 'react-native';
-import { darkColors, lightColors } from '../theme/colors';
-import { spacing } from '../theme/spacing';
-import { typography } from '../theme/typography';
+import colors from '../theme/colors';
 
-type ThemeContextValue = {
-  colors: typeof lightColors;
-  spacing: typeof spacing;
-  typography: typeof typography;
-  isDark: boolean;
-  toggleTheme: () => void;
-};
+const ThemeContext = createContext({
+  isDarkMode: false,
+  colors: colors.light,
+  toggleTheme: () => {},
+});
 
-const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
+export const useTheme = () => useContext(ThemeContext);
 
-export const ThemeProvider = ({ children }: { children: ReactNode }) => {
+export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const colorScheme = Appearance.getColorScheme();
-  const [isDark, setIsDark] = useState(colorScheme === 'dark');
+  const [isDarkMode, setIsDarkMode] = useState(colorScheme === 'dark');
 
-  const value = useMemo(
-    () => ({
-      colors: isDark ? darkColors : lightColors,
-      spacing,
-      typography,
-      isDark,
-      toggleTheme: () => setIsDark((prev) => !prev),
-    }),
-    [isDark],
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
+  const themeColors = isDarkMode ? colors.dark : colors.light;
+
+  return (
+    <ThemeContext.Provider value={{ isDarkMode, colors: themeColors, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
   );
-
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };
-
-export const useTheme = () => {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) {
-    throw new Error('useTheme must be used within ThemeProvider');
-  }
-  return ctx;
-};
-

@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import BottomNavigation from '../../components/BottomNavigation';
 import { EventCategory, LocationType } from '../../utils/eventTypes';
 
 interface CreateEventScreenProps {
@@ -553,6 +554,9 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ navigation }) => 
           </>
         )}
       </View>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation activeTab="Create" navigation={navigation} />
     </SafeAreaView>
   );
 };

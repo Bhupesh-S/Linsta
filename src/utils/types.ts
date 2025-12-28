@@ -10,6 +10,9 @@ export interface Story {
   id: string;
   user: User;
   isOwn?: boolean;
+  timestamp: string;
+  content?: string;
+  backgroundColor?: string;
 }
 
 export interface Post {

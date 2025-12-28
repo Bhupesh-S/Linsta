@@ -1,35 +1,13 @@
-import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { StyleSheet, Text, View } from 'react-native';
-import ScreenWrapper from '../../components/layout/ScreenWrapper';
-import { useTheme } from '../../context/ThemeContext';
-import { TabParamList } from '../../navigation/types';
+import React from 'react';
+import { View, Text, Button } from 'react-native';
 
-type Props = BottomTabScreenProps<TabParamList, 'Events'>;
-
-const EventsScreen = (_: Props) => {
-  const { colors, typography } = useTheme();
-
+const EventsScreen = ({ navigation }: any) => {
   return (
-    <ScreenWrapper>
-      <View style={styles.center}>
-        <Text
-          style={{ color: colors.text, fontSize: typography.size.lg }}
-          allowFontScaling
-        >
-          Events Screen
-        </Text>
-      </View>
-    </ScreenWrapper>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text>Events Screen</Text>
+      <Button title="Go to Event Detail" onPress={() => navigation.navigate('EventDetail')} />
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
-
 export default EventsScreen;
-

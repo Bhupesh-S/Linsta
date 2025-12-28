@@ -1,72 +1,20 @@
-import { StyleSheet, Text, View } from 'react-native';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
-import ScreenWrapper from '../../components/layout/ScreenWrapper';
+import React from 'react';
+import { View, Text, TextInput, Button } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../../navigation/types';
 
-type Props = NativeStackScreenProps<AuthStackParamList, 'Onboarding'>;
-
-const OnboardingScreen = ({ navigation }: Props) => {
-  const { colors, spacing, typography } = useTheme();
-  const { completeOnboarding, login } = useAuth();
-
-  const handleContinue = () => {
-    completeOnboarding();
-    login();
-  };
+const OnboardingScreen = () => {
+  const { login } = useAuth();
 
   return (
-    <ScreenWrapper scrollable>
-      <View style={styles.content}>
-        <Text
-          style={[
-            styles.title,
-            { color: colors.text, fontSize: typography.size.lg },
-          ]}
-          allowFontScaling
-        >
-          Quick onboarding
-        </Text>
-        <Text style={{ color: colors.muted }} allowFontScaling>
-          Capture lightweight profile info. These fields are placeholders only.
-        </Text>
-
-        <View style={[styles.form, { gap: spacing.md }]}>
-          <Input placeholder="College" accessibilityLabel="College input" />
-          <Input placeholder="Course" accessibilityLabel="Course input" />
-          <Input placeholder="Year" accessibilityLabel="Year input" />
-          <Input
-            placeholder="Interests"
-            accessibilityLabel="Interests input"
-            multiline
-          />
-        </View>
-
-        <Button label="Continue" onPress={handleContinue} />
-        <Button
-          label="Back to login"
-          onPress={() => navigation.goBack()}
-          style={{ backgroundColor: colors.secondary }}
-        />
-      </View>
-    </ScreenWrapper>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text>Onboarding Screen</Text>
+      <TextInput placeholder="College" style={{ borderWidth: 1, padding: 8, marginVertical: 8, width: '80%' }} />
+      <TextInput placeholder="Course" style={{ borderWidth: 1, padding: 8, marginVertical: 8, width: '80%' }} />
+      <TextInput placeholder="Year" style={{ borderWidth: 1, padding: 8, marginVertical: 8, width: '80%' }} />
+      <TextInput placeholder="Interests" style={{ borderWidth: 1, padding: 8, marginVertical: 8, width: '80%' }} />
+      <Button title="Complete" onPress={login} />
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  content: {
-    gap: 16,
-  },
-  form: {
-    marginVertical: 8,
-  },
-  title: {
-    fontWeight: '700',
-  },
-});
-
 export default OnboardingScreen;
-

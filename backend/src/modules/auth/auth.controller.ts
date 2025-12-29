@@ -1,7 +1,7 @@
 // Auth API controllers
 import { Request, Response } from "express";
 import { AuthService } from "./auth.service";
-import { RegisterRequest, LoginRequest } from "./auth.types";
+import { RegisterRequest, LoginRequest, GoogleLoginRequest } from "./auth.types";
 
 export class AuthController {
   // POST /api/auth/register
@@ -34,6 +34,24 @@ export class AuthController {
       }
 
       const result = await AuthService.login({ email, password });
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(401).json({ error: error.message });
+    }
+  }
+
+  // POST /api/auth/google
+  static async googleLogin(req: Request, res: Response): Promise<void> {
+    try {
+      const { idToken } = req.body as GoogleLoginRequest;
+
+      // Validation
+      if (!idToken) {
+        res.status(400).json({ error: "Missing ID token" });
+        return;
+      }
+
+      const result = await AuthService.googleLogin({ idToken });
       res.status(200).json(result);
     } catch (error: any) {
       res.status(401).json({ error: error.message });

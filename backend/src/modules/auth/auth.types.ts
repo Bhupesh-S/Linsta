@@ -10,6 +10,10 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface GoogleLoginRequest {
+  idToken: string;
+}
+
 export interface AuthResponse {
   token: string;
   user: {
@@ -23,3 +27,4 @@ export interface JwtPayload {
   userId: string;
   email: string;
 }
+

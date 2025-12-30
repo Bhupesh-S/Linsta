@@ -7,9 +7,11 @@ import {
   StatusBar,
   TouchableOpacity,
   ViewToken,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import StoryCarousel from '../../components/StoryCarousel';
 import PostCard from '../../components/PostCard';
 import VideoReel from '../../components/VideoReel';
@@ -39,7 +41,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     const visibleReel = viewableItems.find(
       (item) => item.item.isReel && item.isViewable
     );
-    
+
     if (visibleReel) {
       setActiveReelId(visibleReel.item.id);
     } else {
@@ -57,30 +59,47 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Ionicons name="logo-linkedin" size={28} color="#0a66c2" />
-          <Text style={styles.appName}>Linsta</Text>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A66C2" translucent={false} />
+
+      {/* Enhanced Header with Gradient */}
+      <LinearGradient
+        colors={['#0A66C2', '#378FE9']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <Ionicons name="logo-linkedin" size={32} color="#FFFFFF" />
+            <Text style={styles.appName} numberOfLines={1} ellipsizeMode="clip">
+              Linsta
+            </Text>
+          </View>
+          <View style={styles.headerIcons}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => navigation?.navigate?.('Notifications')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="notifications-outline" size={28} color="#FFFFFF" />
+              <View style={styles.badge}>
+                <Text style={styles.badgeText} numberOfLines={1}>5</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => navigation?.navigate?.('Messages')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chatbubble-ellipses-outline" size={28} color="#FFFFFF" />
+              <View style={styles.badge}>
+                <Text style={styles.badgeText} numberOfLines={1}>3</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="notifications-outline" size={26} color="#262626" />
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>5</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="chatbubble-ellipses-outline" size={26} color="#262626" />
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>3</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
+      </LinearGradient>
 
       {/* Stories */}
       <StoryCarousel stories={mockStories} onStoryPress={handleStoryPress} />
@@ -118,55 +137,79 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#FAFAFA',
+  },
+  headerGradient: {
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#fff',
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#dbdbdb',
+    paddingVertical: 12,
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   appName: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
-    color: '#262626',
-    fontFamily: 'System',
-    marginLeft: 8,
+    color: '#FFFFFF',
+    marginLeft: 10,
+    letterSpacing: 0.5,
   },
   headerIcons: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 20,
   },
   iconButton: {
-    marginLeft: 20,
     position: 'relative',
+    padding: 4,
   },
   badge: {
     position: 'absolute',
-    top: -6,
-    right: -6,
-    backgroundColor: '#ff3250',
-    borderRadius: 9,
-    minWidth: 18,
-    height: 18,
+    top: 0,
+    right: 0,
+    backgroundColor: '#FF3250',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 1.5,
-    borderColor: '#fff',
+    paddingHorizontal: 5,
+    borderWidth: 2,
+    borderColor: '#378FE9',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.3,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
   feedContent: {
     paddingBottom: 16,
@@ -174,3 +217,4 @@ const styles = StyleSheet.create({
 });
 
 export default HomeScreen;
+

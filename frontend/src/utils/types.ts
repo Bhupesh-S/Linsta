@@ -13,6 +13,7 @@ export interface Story {
   timestamp: string;
   content?: string;
   backgroundColor?: string;
+  imageUri?: any;
 }
 
 export interface Post {

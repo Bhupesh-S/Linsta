@@ -58,7 +58,7 @@ const users: User[] = [
 
 // Mock stories
 export const mockStories: Story[] = [
-  { id: 's1', user: users[0], timestamp: '2h', content: 'Just launched our new product! 🚀', backgroundColor: '#667eea' },
+  { id: 's1', user: users[0], timestamp: '2h', imageUri: require('../../assets/images/img1.jpg') },
   { id: 's2', user: users[1], timestamp: '5h', content: 'Amazing team meeting today 💼', backgroundColor: '#f093fb' },
   { id: 's3', user: users[2], timestamp: '8h', content: 'New design system released! 🎨', backgroundColor: '#fa709a' },
   { id: 's4', user: users[3], timestamp: '12h', content: 'Marketing campaign success! 📈', backgroundColor: '#4facfe' },

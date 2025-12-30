@@ -45,6 +45,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 
     // Auto-navigate after 2 seconds
     const timer = setTimeout(() => {
+      console.log('⏱️  Splash timer finished, calling onFinish');
       // Check for auth token (simulated for now)
       const hasAuthToken = false; // Replace with actual auth check
       onFinish();

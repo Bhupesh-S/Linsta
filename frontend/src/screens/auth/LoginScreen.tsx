@@ -88,6 +88,17 @@ const LoginScreen = ({ navigation }: any) => {
             {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
           </Text>
         </TouchableOpacity>
+
+        {isLogin && (
+          <TouchableOpacity 
+            onPress={() => navigation?.navigate('Signup')}
+            style={[styles.switchButton, { marginTop: 10 }]}
+          >
+            <Text style={[styles.switchText, { color: '#4caf50' }]}>
+              Or create account with full details →
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );

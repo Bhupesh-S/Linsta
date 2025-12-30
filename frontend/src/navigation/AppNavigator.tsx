@@ -139,6 +139,8 @@ const AppNavigatorInner = () => {
   };
 
   const renderScreen = () => {
+    console.log('🖥️  Rendering screen:', navState.currentScreen);
+    
     switch (navState.currentScreen) {
       case 'Splash':
         return <SplashScreen onFinish={handleSplashFinish} />;

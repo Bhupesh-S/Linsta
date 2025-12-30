@@ -12,6 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useUser } from '../../context/UserContext';
+import { authApi } from '../../services/api';
+import { OAuthService } from '../../services/oauth.service';
 
 interface SignupScreenProps {
   navigation?: any;
@@ -19,6 +22,7 @@ interface SignupScreenProps {
 }
 
 const SignupScreen: React.FC<SignupScreenProps> = ({ navigation, onSignupSuccess }) => {
+  const { login } = useUser();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,6 +57,8 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation, onSignupSuccess
   };
 
   const handleSignup = async () => {
+    Alert.alert('Debug', 'Button pressed!'); // Simple test
+    console.log('🔵 Signup button pressed');
     setErrors({ fullName: '', email: '', password: '', confirmPassword: '', privacy: '' });
 
     let hasError = false;
@@ -93,26 +99,107 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation, onSignupSuccess
     }
 
     if (hasError) {
+      console.log('❌ Validation errors:', newErrors);
       setErrors(newErrors);
       return;
     }
 
+    console.log('✅ Validation passed, calling register API...');
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      console.log('📤 Registering user:', { name: fullName, email });
       
-      if (email === 'existing@example.com') {
-        Alert.alert('Email Already Exists', 'This email is already registered. Please login instead.');
-      } else {
-        onSignupSuccess?.(email);
-      }
-    }, 1500);
+      // Call the actual backend register API
+      const result = await authApi.register({ 
+        name: fullName, 
+        email, 
+        password 
+      });
+      
+      console.log('✅ Registration successful!', result);
+      
+      // Navigate to OTP verification screen
+      console.log('📧 Navigating to OTP verification for email:', email);
+      Alert.alert(
+        'Check Your Email', 
+        'We\'ve sent a verification code to your email. Please enter it to complete your registration.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate to OTP screen
+              onSignupSuccess?.(email);
+            }
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('❌ Signup error:', error);
+      Alert.alert(
+        'Signup Failed', 
+        error.message || 'Failed to create account. Please try again.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleOAuthSignup = (provider: string) => {
-    Alert.alert(`${provider} Signup`, `${provider} authentication would be implemented here.`);
+  const handleOAuthSignup = async (provider: 'google' | 'microsoft' | 'linkedin') => {
+    setIsLoading(true);
+    
+    try {
+      console.log(`🔐 Starting ${provider} OAuth...`);
+      
+      let result;
+      
+      switch (provider) {
+        case 'google':
+          result = await OAuthService.signInWithGoogle();
+          break;
+        case 'microsoft':
+          result = await OAuthService.signInWithMicrosoft();
+          break;
+        case 'linkedin':
+          result = await OAuthService.signInWithLinkedIn();
+          break;
+      }
+      
+      console.log('✅ OAuth successful:', result);
+      
+      // Send to backend for authentication
+      if (result.idToken) {
+        const response = await authApi.googleLogin(result.idToken);
+        console.log('✅ Backend auth successful:', response);
+        
+        // Login user
+        await login(result.email || '', ''); // OAuth doesn't need password
+        
+        Alert.alert(
+          'Success!',
+          `Welcome! You've signed in with ${provider}.`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                onSignupSuccess?.(result.email || '');
+              }
+            }
+          ]
+        );
+      }
+    } catch (error: any) {
+      console.error(`❌ ${provider} OAuth error:`, error);
+      
+      if (error.message !== 'Sign-in cancelled') {
+        Alert.alert(
+          `${provider.charAt(0).toUpperCase() + provider.slice(1)} Sign-In Failed`,
+          error.message || `Failed to sign in with ${provider}. Please try again.`
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLogin = () => {
@@ -260,8 +347,12 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation, onSignupSuccess
           {/* Signup Button */}
           <TouchableOpacity
             style={[styles.signupButton, isLoading && styles.signupButtonDisabled]}
-            onPress={handleSignup}
+            onPress={() => {
+              console.log('🔴 BUTTON TAPPED!');
+              handleSignup();
+            }}
             disabled={isLoading}
+            activeOpacity={0.7}
           >
             {isLoading ? (
               <Text style={styles.signupButtonText}>Creating account...</Text>
@@ -281,19 +372,22 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation, onSignupSuccess
           <View style={styles.oauthContainer}>
             <TouchableOpacity
               style={styles.oauthButton}
-              onPress={() => handleOAuthSignup('Google')}
+              onPress={() => handleOAuthSignup('google')}
+              disabled={isLoading}
             >
               <Ionicons name="logo-google" size={24} color="#DB4437" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.oauthButton}
-              onPress={() => handleOAuthSignup('Microsoft')}
+              onPress={() => handleOAuthSignup('microsoft')}
+              disabled={isLoading}
             >
               <Ionicons name="logo-microsoft" size={24} color="#00A4EF" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.oauthButton}
-              onPress={() => handleOAuthSignup('LinkedIn')}
+              onPress={() => handleOAuthSignup('linkedin')}
+              disabled={isLoading}
             >
               <Ionicons name="logo-linkedin" size={24} color="#0A66C2" />
             </TouchableOpacity>

@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { authApi } from '../../services/api';
+import { useUser } from '../../context/UserContext';
 
 interface OTPVerificationScreenProps {
   navigation?: any;
@@ -25,6 +27,7 @@ const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
   route,
   onVerificationSuccess,
 }) => {
+  const { login } = useUser();
   const email = route?.params?.email || 'user@example.com';
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(30);
@@ -93,51 +96,76 @@ const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
 
     setIsVerifying(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsVerifying(false);
+    try {
+      console.log('🔐 Verifying OTP for:', email);
+      
+      // Call the real API
+      const result = await authApi.verifyOTP(email, otpCode);
+      
+      console.log('✅ OTP verified successfully!', result);
+      
+      // Login user with the token received
+      // Store token or user data in context
+      
+      // Show success and navigate
+      Alert.alert(
+        'Success!',
+        'Your email has been verified. Welcome to Linsta!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              onVerificationSuccess?.();
+            }
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('❌ OTP verification error:', error);
+      
+      const newAttempts = attempts + 1;
+      setAttempts(newAttempts);
 
-      // Simulate different scenarios
-      if (otpCode === '123456') {
-        // Success
-        onVerificationSuccess?.();
-      } else if (otpCode === '000000') {
-        // Expired code
-        Alert.alert('Code Expired', 'This verification code has expired. Please request a new one.');
+      if (newAttempts >= 5) {
+        setIsLocked(true);
+        Alert.alert(
+          'Account Locked',
+          'Too many failed attempts. Your account has been locked for 30 minutes.',
+          [{ text: 'OK' }]
+        );
       } else {
-        // Invalid code
-        const newAttempts = attempts + 1;
-        setAttempts(newAttempts);
-
-        if (newAttempts >= 5) {
-          setIsLocked(true);
-          Alert.alert(
-            'Account Locked',
-            'Too many failed attempts. Your account has been locked for 30 minutes.',
-            [{ text: 'OK' }]
-          );
-        } else {
-          Alert.alert(
-            'Invalid Code',
-            `Incorrect verification code. ${5 - newAttempts} attempts remaining.`
-          );
-        }
-        
-        // Clear OTP
-        setOtp(['', '', '', '', '', '']);
-        inputRefs.current[0]?.focus();
+        Alert.alert(
+          'Invalid Code',
+          error.message || `Incorrect verification code. ${5 - newAttempts} attempts remaining.`
+        );
       }
-    }, 1000);
+      
+      // Clear OTP
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (!canResend) return;
 
-    setTimer(30);
-    setCanResend(false);
-    setOtp(['', '', '', '', '', '']);
-    inputRefs.current[0]?.focus();
-    Alert.alert('Code Sent', 'A new verification code has been sent to your email.');
+    try {
+      console.log('📧 Resending OTP to:', email);
+      await authApi.resendOTP(email);
+      
+      setTimer(30);
+      setCanResend(false);
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+      
+      Alert.alert('Code Sent', 'A new verification code has been sent to your email.');
+      console.log('✅ OTP resent successfully');
+    } catch (error: any) {
+      console.error('❌ Resend OTP error:', error);
+      Alert.alert('Error', error.message || 'Failed to resend code. Please try again.');
+    }
   };
 
   const handleChangeEmail = () => {

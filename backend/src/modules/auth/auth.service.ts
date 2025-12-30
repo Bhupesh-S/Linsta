@@ -1,4 +1,4 @@
-// Authentication business logic
+  // Authentication business logic
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";

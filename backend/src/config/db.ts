@@ -1,4 +1,4 @@
-// Database configuration and connection logic
+
 import mongoose from "mongoose";
 
 export const connectDB = async (): Promise<void> => {

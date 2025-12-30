@@ -1,26 +1,110 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authApi, LoginData, RegisterData } from '../services/api';
 
-const AuthContext = createContext({
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface AuthContextType {
+  isAuthenticated: boolean;
+  user: User | null;
+  token: string | null;
+  login: (data: LoginData) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
+  logout: () => Promise<void>;
+  loading: boolean;
+}
+
+const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
-  login: () => {},
-  logout: () => {},
+  user: null,
+  token: null,
+  login: async () => {},
+  register: async () => {},
+  logout: async () => {},
+  loading: true,
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = () => {
-    setIsAuthenticated(true);
+  // Load stored auth data on mount
+  useEffect(() => {
+    loadStoredAuth();
+  }, []);
+
+  const loadStoredAuth = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('token');
+      const storedUser = await AsyncStorage.getItem('user');
+
+      if (storedToken && storedUser) {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+        setIsAuthenticated(true);
+      }
+    } catch (error) {
+      console.error('Error loading stored auth:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const logout = () => {
-    setIsAuthenticated(false);
+  const login = async (data: LoginData) => {
+    try {
+      const response = await authApi.login(data);
+      
+      // Store token and user data
+      await AsyncStorage.setItem('token', response.token);
+      await AsyncStorage.setItem('user', JSON.stringify(response.user));
+      
+      setToken(response.token);
+      setUser(response.user);
+      setIsAuthenticated(true);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const register = async (data: RegisterData) => {
+    try {
+      const response = await authApi.register(data);
+      
+      // Store token and user data
+      await AsyncStorage.setItem('token', response.token);
+      await AsyncStorage.setItem('user', JSON.stringify(response.user));
+      
+      setToken(response.token);
+      setUser(response.user);
+      setIsAuthenticated(true);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await AsyncStorage.removeItem('token');
+      await AsyncStorage.removeItem('user');
+      
+      setToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, token, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,6 +5,7 @@ import { OAuth2Client } from "google-auth-library";
 import { User } from "../users/user.model";
 import { UserProfile } from "../users/profile.model";
 import { RegisterRequest, LoginRequest, GoogleLoginRequest, AuthResponse, JwtPayload } from "./auth.types";
+import { OTPService } from "./otp.service";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 const JWT_EXPIRY = "7d";
@@ -38,6 +39,12 @@ export class AuthService {
       skills: [],
       interests: [],
     });
+
+    // Send OTP for email verification (non-blocking)
+    OTPService.sendOTP(user.email).catch(err => {
+      console.error('Failed to send OTP email:', err.message);
+    });
+    console.log(`📧 OTP sending initiated for ${user.email}`);
 
     // Generate token
     const token = this.generateToken(user._id.toString(), user.email);
@@ -166,5 +173,44 @@ export class AuthService {
     } catch (error) {
       throw new Error("Invalid or expired token");
     }
+  }
+
+  // Verify OTP
+  static async verifyOTP(email: string, code: string): Promise<AuthResponse> {
+    // Verify the OTP
+    const isValid = OTPService.verifyOTP(email, code);
+    
+    if (!isValid) {
+      throw new Error("Invalid or expired OTP code");
+    }
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Generate token after successful verification
+    const token = this.generateToken(user._id.toString(), user.email);
+
+    return {
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+      },
+    };
+  }
+
+  // Resend OTP
+  static async resendOTP(email: string): Promise<void> {
+    // Check if user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    await OTPService.resendOTP(email);
   }
 }

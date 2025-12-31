@@ -3,6 +3,7 @@ import HomeScreen from '../screens/home/HomeScreen';
 import EventsDiscoveryScreen from '../screens/events/EventsDiscoveryScreen';
 import EventDetailScreen from '../screens/events/EventDetailScreen';
 import CreateEventScreen from '../screens/events/CreateEventScreen';
+import { NetworkScreen } from '../screens/NetworkScreen';
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignupScreen';
@@ -13,7 +14,7 @@ import { Event } from '../utils/eventTypes';
 import { UserProvider, useUser } from '../context/UserContext';
 import { UserStatus, ScreenPermission } from '../types/userTypes';
 
-type Screen = 'Splash' | 'Login' | 'Signup' | 'OTPVerification' | 'OAuthSelection' | 'Home' | 'Events' | 'EventDetail' | 'CreateEvent' | 'Restricted';
+type Screen = 'Splash' | 'Login' | 'Signup' | 'OTPVerification' | 'OAuthSelection' | 'Home' | 'Network' | 'Events' | 'EventDetail' | 'CreateEvent' | 'Restricted' | 'Profile';
 
 interface NavigationState {
   currentScreen: Screen;
@@ -67,8 +68,10 @@ const AppNavigatorInner = () => {
         return true; // Public screens
       
       case 'Home':
+      case 'Network':
       case 'Events':
       case 'EventDetail':
+      case 'Profile':
         return checkPermission(ScreenPermission.AUTHENTICATED);
       
       case 'CreateEvent':
@@ -173,6 +176,9 @@ const AppNavigatorInner = () => {
       
       case 'Home':
         return <HomeScreen navigation={navigation} />;
+      
+      case 'Network':
+        return <NetworkScreen />;
       
       case 'Events':
         return <EventsDiscoveryScreen navigation={navigation} />;

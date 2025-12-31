@@ -14,9 +14,14 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [userState, setUserState] = useState<UserState>({
-    status: UserStatus.LOGGED_OUT,
-    profile: null,
-    isAuthenticated: false,
+    status: UserStatus.RETURNING_USER,
+    profile: {
+      id: '1',
+      email: 'dev@linsta.com',
+      fullName: 'Development User',
+      profileComplete: true,
+    },
+    isAuthenticated: true,
   });
 
   // Check for existing auth token on mount

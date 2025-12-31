@@ -24,8 +24,12 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({
       navigation.navigate('Events');
     } else if (tabId === 'Home' && navigation) {
       navigation.navigate('Home');
+    } else if (tabId === 'Network' && navigation) {
+      navigation.navigate('Network');
     } else if (tabId === 'Create' && navigation) {
       navigation.navigate('CreateEvent');
+    } else if (tabId === 'Profile' && navigation) {
+      navigation.navigate('Profile');
     }
   };
 

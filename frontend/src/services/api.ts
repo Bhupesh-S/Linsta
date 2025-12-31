@@ -1,47 +1,58 @@
-// API service for backend communication
-// Use your computer's IP address for physical devices/emulators
-// For Android emulator use: http://10.0.2.2:5000
-// For iOS simulator use: http://localhost:5000
-// For physical device use: http://YOUR_IP_ADDRESS:5000
+// API service for backend communication with auto-detection
+// Automatically finds the working backend URL for any network configuration
 
-// AUTO-DETECT: Try multiple endpoints
-const POSSIBLE_URLS = [
-  'http://10.0.2.2:5000',      // Android emulator
-  'http://10.46.192.61:5000',  // Your computer's WiFi IP
-  'http://192.168.56.1:5000',  // VirtualBox host
-  'http://localhost:5000',     // Localhost
-];
+// Dynamic API URL - will be set by auto-detection
+let API_BASE_URL = 'http://localhost:5000'; // Fallback default
 
-// Start with emulator default
-const API_BASE_URL = __DEV__ 
-  ? 'http://192.168.18.61:5000'  // Physical device - use WiFi IP
-  : 'http://localhost:5000';  // Production
-
-console.log('🌐 API_BASE_URL:', API_BASE_URL);
-console.log('📱 Try these URLs if connection fails:', POSSIBLE_URLS);
-
-// Test network connectivity
-export const testConnection = async (): Promise<string | null> => {
-  console.log('🔍 Testing API connections...');
+// Common backend endpoints to try (without specific IPs)
+const getCommonUrls = (): string[] => {
+  const urls = [
+    'http://10.0.2.2:5000',      // Android emulator
+    'http://localhost:5000',     // Localhost/iOS simulator
+  ];
   
-  for (const url of POSSIBLE_URLS) {
+  // In development, the app will auto-detect the correct URL on first API call
+  return urls;
+};
+
+// Auto-detect working backend URL
+export const testConnection = async (): Promise<string | null> => {
+  console.log('🔍 Auto-detecting backend server...');
+  const urls = getCommonUrls();
+  
+  for (const url of urls) {
     try {
       console.log(`Testing: ${url}`);
-      const response = await fetch(`${url}/`, { 
-        method: 'GET',
-        signal: AbortSignal.timeout(3000)
+      const response = await fetch(`${url}/api/auth/login`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'test', password: 'test' }),
+        signal: AbortSignal.timeout(2000)
       });
-      if (response.ok || response.status === 404) { // 404 is fine, means server is reachable
-        console.log(`✅ Connected to: ${url}`);
-        return url;
-      }
+      // Any response (even errors) means server is reachable
+      console.log(`✅ Server found at: ${url}`);
+      API_BASE_URL = url;
+      return url;
     } catch (error: any) {
-      console.log(`❌ Failed: ${url} - ${error.message}`);
+      console.log(`❌ Not reachable: ${url}`);
     }
   }
   
-  console.log('❌ No working connection found');
-  return null;
+  console.log('❌ No backend server found. Using fallback:', API_BASE_URL);
+  return API_BASE_URL;
+};
+
+// Get current API URL (with auto-detection on first call)
+let connectionTested = false;
+const getApiUrl = async (): Promise<string> => {
+  if (!connectionTested && __DEV__) {
+    connectionTested = true;
+    const detectedUrl = await testConnection();
+    if (detectedUrl) {
+      API_BASE_URL = detectedUrl;
+    }
+  }
+  return API_BASE_URL;
 };
 
 export interface RegisterData {
@@ -56,10 +67,11 @@ export interface LoginData {
 }
 
 export interface AuthResponse {
-  user: {
-    id: string;
-    name: string;
-    email: string;
+  user: {t apiUrl = await getApiUrl();
+      console.log('Registering user with:', { email: data.email, name: data.name });
+      console.log('API URL:', `${apiUrl}/api/auth/register`);
+      
+      const response = await fetch(`${apiUrl
   };
   token: string;
 }
@@ -84,31 +96,45 @@ export const authApi = {
       if (!response.ok) {
         console.error('Registration failed:', result.error);
         throw new Error(result.error || 'Registration failed');
-      }
-
-      return result;
-    } catch (error) {
+      }t apiUrl = await getApiUrl();
+      console.log('🔐 Logging in user:', data.email);
+      console.log('API URL:', `${apiUrl}/api/auth/login`);
+      
+      const response = await fetch(`${apiUrl
       console.error('Registration error:', error);
       throw error;
     }
   },
 
   login: async (data: LoginData): Promise<AuthResponse> => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      console.log('🔐 Logging in user:', data.email);
+      console.log('API URL:', `${API_BASE_URL}/api/auth/login`);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
 
-    const result = await response.json();
+      const result = await response.json();
+      console.log('✅ Login API response:', JSON.stringify(result, null, 2));
+      console.log('✅ Has token?', !!result.token);
+      console.log('✅ Has user?', !!result.user);
 
-    if (!response.ok) {
-      throw new Error(result.error || 'Login failed');
+      if (!response.ok) {
+        console.error('Login failed:', result.error);
+        thapiUrl = await getApiUrl();
+    const response = await fetch(`${apiUrlailed');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('❌ Login error:', error);
+      throw error;
     }
-
-    return result;
   },
 
   googleLogin: async (idToken: string): Promise<AuthResponse> => {
@@ -119,7 +145,8 @@ export const authApi = {
       },
       body: JSON.stringify({ idToken }),
     });
-
+apiUrl = await getApiUrl();
+    const response = await fetch(`${apiUrl
     const result = await response.json();
 
     if (!response.ok) {
@@ -137,7 +164,8 @@ export const authApi = {
       },
       body: JSON.stringify({ email, code }),
     });
-
+apiUrl = await getApiUrl();
+    const response = await fetch(`${apiUrl
     const result = await response.json();
 
     if (!response.ok) {

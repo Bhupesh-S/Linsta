@@ -3,28 +3,29 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityInd
 import { useAuth } from '../../context/AuthContext';
 
 const LoginScreen = ({ navigation }: any) => {
-  const { login, register } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  const { login, isAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
 
+  console.log('🔍 LoginScreen: isAuthenticated =', isAuthenticated);
+
   const handleSubmit = async () => {
-    if (!email || !password || (!isLogin && !name)) {
+    if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
+    console.log('🔐 Login attempt:', email);
+    console.log('🔐 Login function type:', typeof login);
     setLoading(true);
     try {
-      if (isLogin) {
-        await login({ email, password });
-      } else {
-        await register({ name, email, password });
-      }
+      await login({ email, password });
+      console.log('✅ Login successful');
+      console.log('✅ isAuthenticated after login:', isAuthenticated);
       // Navigation will happen automatically when isAuthenticated changes
     } catch (error: any) {
+      console.error('❌ Login error:', error);
       Alert.alert('Error', error.message || 'Authentication failed');
     } finally {
       setLoading(false);
@@ -33,22 +34,10 @@ const LoginScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{isLogin ? 'Welcome Back' : 'Create Account'}</Text>
-      <Text style={styles.subtitle}>
-        {isLogin ? 'Sign in to continue' : 'Sign up to get started'}
-      </Text>
+      <Text style={styles.title}>Welcome Back</Text>
+      <Text style={styles.subtitle}>Sign in to continue</Text>
 
       <View style={styles.form}>
-        {!isLogin && (
-          <TextInput
-            style={styles.input}
-            placeholder="Full Name"
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-          />
-        )}
-        
         <TextInput
           style={styles.input}
           placeholder="Email"
@@ -74,31 +63,18 @@ const LoginScreen = ({ navigation }: any) => {
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>
-              {isLogin ? 'Sign In' : 'Sign Up'}
-            </Text>
+            <Text style={styles.buttonText}>Sign In</Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity 
-          onPress={() => setIsLogin(!isLogin)}
+          onPress={() => navigation?.navigate('Signup')}
           style={styles.switchButton}
         >
           <Text style={styles.switchText}>
-            {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+            Don't have an account? Sign Up
           </Text>
         </TouchableOpacity>
-
-        {isLogin && (
-          <TouchableOpacity 
-            onPress={() => navigation?.navigate('Signup')}
-            style={[styles.switchButton, { marginTop: 10 }]}
-          >
-            <Text style={[styles.switchText, { color: '#4caf50' }]}>
-              Or create account with full details →
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
     </View>
   );

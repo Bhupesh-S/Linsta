@@ -13,6 +13,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (data: LoginData) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
   login: async () => {},
+  loginWithGoogle: async () => {},
   register: async () => {},
   logout: async () => {},
   loading: true,
@@ -60,16 +62,48 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (data: LoginData) => {
     try {
+      console.log('📡 AuthContext: Starting login...');
       const response = await authApi.login(data);
+      
+      console.log('📡 AuthContext: Login response received');
       
       // Store token and user data
       await AsyncStorage.setItem('token', response.token);
       await AsyncStorage.setItem('user', JSON.stringify(response.user));
       
+      console.log('✅ AuthContext: Token and user stored');
+      
       setToken(response.token);
       setUser(response.user);
       setIsAuthenticated(true);
+      
+      console.log('✅ AuthContext: isAuthenticated set to true');
     } catch (error) {
+      console.error('❌ AuthContext: Login failed', error);
+      throw error;
+    }
+  };
+
+  const loginWithGoogle = async (idToken: string) => {
+    try {
+      console.log('📡 AuthContext: Starting Google login...');
+      const response = await authApi.googleLogin(idToken);
+      
+      console.log('📡 AuthContext: Google login response received');
+      
+      // Store token and user data
+      await AsyncStorage.setItem('token', response.token);
+      await AsyncStorage.setItem('user', JSON.stringify(response.user));
+      
+      console.log('✅ AuthContext: Token and user stored');
+      
+      setToken(response.token);
+      setUser(response.user);
+      setIsAuthenticated(true);
+      
+      console.log('✅ AuthContext: Google authentication complete');
+    } catch (error) {
+      console.error('❌ AuthContext: Google login failed', error);
       throw error;
     }
   };
@@ -104,7 +138,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, token, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, token, login, loginWithGoogle, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

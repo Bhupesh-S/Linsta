@@ -13,6 +13,8 @@ const RootNavigator = () => {
   const { isAuthenticated, loading } = useAuth();
   const { colors, isDark } = useTheme();
 
+  console.log('🧭 RootNavigator: isAuthenticated =', isAuthenticated, ', loading =', loading);
+
   const baseTheme = isDark ? DarkTheme : DefaultTheme;
 
   const navTheme = {

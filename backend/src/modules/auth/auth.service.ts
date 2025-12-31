@@ -94,22 +94,20 @@ export class AuthService {
   // Google login
   static async googleLogin(data: GoogleLoginRequest): Promise<AuthResponse> {
     try {
-      // For testing purposes - accept any token format
-      // In production, always verify: await googleClient.verifyIdToken(...)
-      
-      // For now, we'll parse a mock token to test the flow
-      // This allows testing without real Google tokens
-      
-      // Extract test data from token (in production use real verification)
-      const mockPayload = {
-        sub: "test_google_user_" + Date.now(),
-        email: "testuser@gmail.com",
-        name: "Test User from Google",
-      };
+      // Verify Google ID token
+      const ticket = await googleClient.verifyIdToken({
+        idToken: data.idToken,
+        audience: GOOGLE_CLIENT_ID,
+      });
 
-      const googleId = mockPayload.sub;
-      const email = mockPayload.email;
-      const name = mockPayload.name;
+      const payload = ticket.getPayload();
+      if (!payload) {
+        throw new Error("Invalid Google token");
+      }
+
+      const googleId = payload.sub;
+      const email = payload.email;
+      const name = payload.name;
 
       if (!email || !name) {
         throw new Error("Missing email or name from Google");

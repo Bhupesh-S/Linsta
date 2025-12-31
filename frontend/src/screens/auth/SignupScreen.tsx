@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useUser } from '../../context/UserContext';
+import { useAuth } from '../../context/AuthContext';
 import { authApi } from '../../services/api';
 import { OAuthService } from '../../services/oauth.service';
 
@@ -22,7 +22,7 @@ interface SignupScreenProps {
 }
 
 const SignupScreen: React.FC<SignupScreenProps> = ({ navigation, onSignupSuccess }) => {
-  const { login } = useUser();
+  const { loginWithGoogle } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -169,20 +169,19 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation, onSignupSuccess
       
       // Send to backend for authentication
       if (result.idToken) {
-        const response = await authApi.googleLogin(result.idToken);
-        console.log('✅ Backend auth successful:', response);
-        
-        // Login user
-        await login(result.email || '', ''); // OAuth doesn't need password
+        // Use AuthContext's loginWithGoogle method
+        await loginWithGoogle(result.idToken);
+        console.log('✅ Google authentication complete');
         
         Alert.alert(
           'Success!',
-          `Welcome! You've signed in with ${provider}.`,
+          `Welcome! You've signed up with ${provider}.`,
           [
             {
               text: 'OK',
               onPress: () => {
-                onSignupSuccess?.(result.email || '');
+                // Navigation will happen automatically via AuthContext
+                // The RootNavigator watches isAuthenticated state
               }
             }
           ]

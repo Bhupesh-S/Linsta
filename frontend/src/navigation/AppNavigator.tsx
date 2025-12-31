@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import HomeScreen from '../screens/home/HomeScreen';
 import EventsDiscoveryScreen from '../screens/events/EventsDiscoveryScreen';
 import EventDetailScreen from '../screens/events/EventDetailScreen';
@@ -11,6 +11,7 @@ import OAuthSelectionScreen from '../screens/auth/OAuthSelectionScreen';
 import RestrictedAccessScreen from '../screens/RestrictedAccessScreen';
 import { Event } from '../utils/eventTypes';
 import { UserProvider, useUser } from '../context/UserContext';
+import { useAuth } from '../context/AuthContext';
 import { UserStatus, ScreenPermission } from '../types/userTypes';
 
 type Screen = 'Splash' | 'Login' | 'Signup' | 'OTPVerification' | 'OAuthSelection' | 'Home' | 'Events' | 'EventDetail' | 'CreateEvent' | 'Restricted';
@@ -23,9 +24,24 @@ interface NavigationState {
 
 const AppNavigatorInner = () => {
   const { userState, login, logout, checkPermission, completeProfile } = useUser();
+  const { isAuthenticated } = useAuth();
   const [navState, setNavState] = useState<NavigationState>({
-    currentScreen: 'Splash',
+    currentScreen: isAuthenticated ? 'Home' : 'Splash',
   });
+
+  console.log('🧭 AppNavigator: isAuthenticated =', isAuthenticated, ', currentScreen =', navState.currentScreen);
+
+  // Watch for authentication changes and navigate to Home
+  useEffect(() => {
+    console.log('🔄 useEffect triggered: isAuthenticated =', isAuthenticated, ', currentScreen =', navState.currentScreen);
+    if (isAuthenticated && (navState.currentScreen === 'Login' || navState.currentScreen === 'Signup' || navState.currentScreen === 'OTPVerification')) {
+      console.log('✅ User authenticated, navigating to Home');
+      setNavState(prev => ({ ...prev, currentScreen: 'Home' }));
+    } else if (!isAuthenticated && navState.currentScreen === 'Home') {
+      console.log('🔒 User logged out, navigating to Login');
+      setNavState(prev => ({ ...prev, currentScreen: 'Login' }));
+    }
+  }, [isAuthenticated, navState.currentScreen]);
 
   const navigation = {
     navigate: (screen: Screen, params?: any) => {
@@ -69,11 +85,8 @@ const AppNavigatorInner = () => {
       case 'Home':
       case 'Events':
       case 'EventDetail':
-        return checkPermission(ScreenPermission.AUTHENTICATED);
-      
       case 'CreateEvent':
-        return checkPermission(ScreenPermission.PROFILE_COMPLETE) && 
-               checkPermission(ScreenPermission.UNRESTRICTED);
+        return isAuthenticated; // Use AuthContext instead of UserContext
       
       default:
         return false;
@@ -81,9 +94,10 @@ const AppNavigatorInner = () => {
   };
 
   const handleSplashFinish = () => {
-    // Check user state
-    if (userState.isAuthenticated) {
-      handlePostAuthFlow();
+    // Check auth state from AuthContext
+    console.log('⏱️ Splash finished, isAuthenticated:', isAuthenticated);
+    if (isAuthenticated) {
+      setNavState({ ...navState, currentScreen: 'Home' });
     } else {
       setNavState({ ...navState, currentScreen: 'Login' });
     }

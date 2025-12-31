@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { useUser } from '../../context/UserContext';
 import ProfileHeader from '../../components/profile/ProfileHeader';
 import ExperienceCard from '../../components/profile/ExperienceCard';
 import SkillTag from '../../components/profile/SkillTag';
@@ -11,8 +12,14 @@ interface Props { navigation?: any; username?: string }
 
 const ProfileScreen: React.FC<Props> = ({ navigation, username = 'johndoe' }) => {
   const { colors } = useTheme();
+  const { logout } = useUser();
 
   const onConnect = () => { };
+
+  const handleLogout = () => {
+    logout();
+    navigation?.navigate?.('Login');
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -75,6 +82,16 @@ const ProfileScreen: React.FC<Props> = ({ navigation, username = 'johndoe' }) =>
           { id: 'm2', uri: 'https://picsum.photos/400/400?2', type: 'image' },
           { id: 'm3', uri: 'https://picsum.photos/400/400?3', type: 'image' },
         ]} />
+
+        {/* Logout Button */}
+        <TouchableOpacity 
+          style={[styles.logoutButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+          onPress={handleLogout}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="log-out-outline" size={20} color="#dc2626" />
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -118,6 +135,24 @@ const styles = StyleSheet.create({
   backLink: { fontSize: 14 },
   link: { fontSize: 14, fontWeight: '700' },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 16, marginBottom: 8 },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 32,
+    marginBottom: 100,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#dc2626',
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#dc2626',
+  },
 });
 
 export default ProfileScreen;

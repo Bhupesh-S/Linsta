@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   feedContent: {
-    paddingBottom: 16,
+    paddingBottom: 90, // Increased to account for fixed bottom navigation
   },
 });
 

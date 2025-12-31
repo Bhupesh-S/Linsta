@@ -63,12 +63,31 @@ export const OAuthService = {
   // Microsoft Sign-In (using expo-auth-session)
   signInWithMicrosoft: async (): Promise<OAuthResult> => {
     try {
+      // Microsoft requires a registered app with client ID
+      // For now, we'll show a message that Microsoft auth needs configuration
+      console.log('⚠️ Microsoft OAuth requires app setup');
+      
+      // Throw a user-friendly error
+      throw new Error(
+        'Microsoft authentication requires app configuration. ' +
+        'Please use Google or email signup for now.'
+      );
+      
+      /* To enable Microsoft OAuth:
+       * 1. Go to https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps
+       * 2. Register a new application
+       * 3. Add redirect URI: https://auth.expo.io/@anonymous/linsta
+       * 4. Get Application (client) ID
+       * 5. Update this code with your client ID
+       */
+      
+      // Uncomment and configure when ready:
+      /*
       const redirectUri = makeRedirectUri({
-        scheme: 'linsta',
-        path: 'redirect'
+        native: 'linsta://redirect',
+        useProxy: true,
       });
 
-      // Microsoft OAuth endpoint
       const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?` +
         `client_id=YOUR_MICROSOFT_CLIENT_ID&` +
         `response_type=id_token&` +
@@ -80,11 +99,9 @@ export const OAuthService = {
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
       if (result.type === 'success' && result.url) {
-        // Parse the token from URL fragment
         const params = new URLSearchParams(result.url.split('#')[1]);
         const idToken = params.get('id_token');
 
-        // Decode JWT to get user info (basic parsing)
         if (idToken) {
           const payload = JSON.parse(atob(idToken.split('.')[1]));
           
@@ -98,21 +115,41 @@ export const OAuthService = {
       }
 
       throw new Error('Microsoft Sign-In failed');
+      */
     } catch (error: any) {
       console.error('Microsoft Sign-In Error:', error);
-      throw new Error(error.message || 'Microsoft Sign-In failed');
+      throw error;
     }
   },
 
   // LinkedIn Sign-In (using expo-auth-session)
   signInWithLinkedIn: async (): Promise<OAuthResult> => {
     try {
+      // LinkedIn requires a registered app with client ID and secret
+      // For now, we'll show a message that LinkedIn auth needs configuration
+      console.log('⚠️ LinkedIn OAuth requires app setup');
+      
+      // Throw a user-friendly error
+      throw new Error(
+        'LinkedIn authentication requires app configuration. ' +
+        'Please use Google or email signup for now.'
+      );
+      
+      /* To enable LinkedIn OAuth:
+       * 1. Create app at https://www.linkedin.com/developers/apps
+       * 2. Add redirect URI: https://auth.expo.io/@anonymous/linsta
+       * 3. Get Client ID and Client Secret
+       * 4. Add backend endpoint /api/auth/linkedin to exchange code for token
+       * 5. Update this code with your client ID
+       */
+      
+      // Uncomment and configure when ready:
+      /*
       const redirectUri = makeRedirectUri({
-        scheme: 'linsta',
-        path: 'redirect'
+        native: 'linsta://redirect',
+        useProxy: true,
       });
 
-      // LinkedIn OAuth endpoint
       const authUrl = `https://www.linkedin.com/oauth/v2/authorization?` +
         `response_type=code&` +
         `client_id=YOUR_LINKEDIN_CLIENT_ID&` +
@@ -122,25 +159,33 @@ export const OAuthService = {
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
       if (result.type === 'success' && result.url) {
-        // Parse authorization code
         const params = new URLSearchParams(result.url.split('?')[1]);
         const code = params.get('code');
 
         if (code) {
-          // Note: In production, exchange code for token on backend
-          console.log('LinkedIn authorization code:', code);
+          // Exchange code for token on backend
+          const response = await fetch('YOUR_BACKEND_URL/api/auth/linkedin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, redirectUri }),
+          });
+          
+          const data = await response.json();
           
           return {
-            idToken: code,
+            idToken: data.idToken,
+            email: data.email,
+            name: data.name,
             provider: 'linkedin',
           };
         }
       }
 
       throw new Error('LinkedIn Sign-In failed');
+      */
     } catch (error: any) {
       console.error('LinkedIn Sign-In Error:', error);
-      throw new Error(error.message || 'LinkedIn Sign-In failed');
+      throw error;
     }
   },
 

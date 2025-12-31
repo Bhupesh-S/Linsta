@@ -1,9 +1,15 @@
 const spacing = {
   xs: 4,
-  s: 8,
-  m: 16,
-  l: 24,
-  xl: 40,
+  sm: 8,
+  md: 12,
+  base: 16,
+  lg: 20,
+  xl: 24,
+  '2xl': 32,
+  '3xl': 40,
+  '4xl': 48,
+  '5xl': 64,
 };
 
 export default spacing;
+

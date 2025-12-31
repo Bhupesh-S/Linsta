@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/home/HomeScreen';
 import EventsScreen from '../screens/events/EventsScreen';
-import NetworkScreen from '../screens/network/NetworkScreen';
+import { NetworkScreen } from '../screens/NetworkScreen';
 import MessagesScreen from '../screens/messages/MessagesScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import { TabParamList } from './types';

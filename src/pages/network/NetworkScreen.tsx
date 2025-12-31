@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import UserCard from '../../components/network/UserCard';
+import BottomNavigation from '../../components/BottomNavigation';
 
 interface Props { navigation?: any }
 
@@ -67,6 +68,9 @@ const NetworkScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation activeTab="Network" navigation={navigation} />
     </SafeAreaView>
   );
 };
@@ -136,7 +140,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   bottomPadding: {
-    height: 24,
+    height: 90, // Increased to account for fixed bottom navigation
   },
 });
 

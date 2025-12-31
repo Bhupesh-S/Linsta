@@ -179,7 +179,7 @@ const AppNavigatorInner = () => {
         return <HomeScreen navigation={navigation} />;
       
       case 'Network':
-        return <NetworkScreen />;
+        return <NetworkScreen navigation={navigation} />;
       
       case 'Events':
         return <EventsDiscoveryScreen navigation={navigation} />;

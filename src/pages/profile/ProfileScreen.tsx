@@ -7,6 +7,7 @@ import ProfileHeader from '../../components/profile/ProfileHeader';
 import ExperienceCard from '../../components/profile/ExperienceCard';
 import SkillTag from '../../components/profile/SkillTag';
 import MediaGrid from '../../components/profile/MediaGrid';
+import BottomNavigation from '../../components/BottomNavigation';
 
 interface Props { navigation?: any; username?: string }
 
@@ -93,6 +94,9 @@ const ProfileScreen: React.FC<Props> = ({ navigation, username = 'johndoe' }) =>
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation activeTab="Profile" navigation={navigation} />
     </View>
   );
 };

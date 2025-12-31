@@ -2,6 +2,7 @@
 import { Event, IEvent } from "./event.model";
 import { EventRsvp, IEventRsvp } from "./rsvp.model";
 import { Types } from "mongoose";
+import notificationService from "../notifications/notification.service";
 
 export class EventService {
   // Create a new event
@@ -72,6 +73,22 @@ export class EventService {
       eventId: new Types.ObjectId(eventId),
       userId: new Types.ObjectId(userId),
     });
+
+    // Notify event creator (if not the RSVP user)
+    const creator = event.createdBy.toString();
+    if (creator !== userId) {
+      const User = require("../users/user.model").default;
+      const user = await User.findById(userId).select("name");
+      const userName = user?.name || "Someone";
+
+      await notificationService.createNotification(
+        creator,
+        userId,
+        'EVENT_RSVP',
+        `${userName} registered for your event`,
+        eventId
+      );
+    }
 
     return rsvp;
   }

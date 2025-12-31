@@ -5,6 +5,7 @@ import { Like, ILike } from "./like.model";
 import { Comment, IComment } from "./comment.model";
 import { Types } from "mongoose";
 import { CreatePostRequest, PostResponse, CommentResponse } from "./post.types";
+import notificationService from "../notifications/notification.service";
 
 export class PostService {
   // Create a new post with optional media
@@ -159,6 +160,19 @@ export class PostService {
       userId: new Types.ObjectId(userId),
     });
 
+    // Notify post author (if not the liker)
+    const author = post.authorId.toString();
+    if (author !== userId) {
+      const authorName = await this.getAuthorName(author);
+      await notificationService.createNotification(
+        author,
+        userId,
+        'LIKE',
+        `${authorName} liked your post`,
+        postId
+      );
+    }
+
     return { success: true, message: "Post liked successfully" };
   }
 
@@ -193,6 +207,19 @@ export class PostService {
 
     // Populate user info
     const populatedComment = await comment.populate("userId", "name email");
+
+    // Notify post author (if not the commenter)
+    const author = post.authorId.toString();
+    if (author !== userId) {
+      const commenterName = (populatedComment.userId as any)?.name || "Someone";
+      await notificationService.createNotification(
+        author,
+        userId,
+        'COMMENT',
+        `${commenterName} commented on your post`,
+        postId
+      );
+    }
 
     return {
       _id: comment._id.toString(),
@@ -276,5 +303,12 @@ export class PostService {
     await Comment.deleteMany({ postId: new Types.ObjectId(postId) });
 
     return { success: true, message: "Post deleted successfully" };
+  }
+
+  // Helper: Get author name by user ID
+  private static async getAuthorName(userId: string): Promise<string> {
+    const User = require("../users/user.model").default;
+    const user = await User.findById(userId).select("name");
+    return user?.name || "Someone";
   }
 }

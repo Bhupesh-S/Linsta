@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 90, // Increased to account for fixed bottom navigation
   },
   emptyState: {
     alignItems: 'center',

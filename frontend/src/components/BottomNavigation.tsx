@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface BottomNavigationProps {
@@ -24,63 +24,107 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({
       navigation.navigate('Events');
     } else if (tabId === 'Home' && navigation) {
       navigation.navigate('Home');
+    } else if (tabId === 'Network' && navigation) {
+      navigation.navigate('Network');
     } else if (tabId === 'Create' && navigation) {
       navigation.navigate('CreateEvent');
+    } else if (tabId === 'Profile' && navigation) {
+      navigation.navigate('Profile');
     }
   };
 
   return (
     <View style={styles.container}>
-      {tabs.map((tab) => (
-        <TouchableOpacity
-          key={tab.id}
-          style={styles.tab}
-          activeOpacity={0.7}
-          onPress={() => handleTabPress(tab.id)}
-        >
-          <Ionicons
-            name={tab.icon as any}
-            size={26}
-            color={activeTab === tab.id ? '#262626' : '#8e8e8e'}
-          />
-          <Text
-            style={[
-              styles.label,
-              activeTab === tab.id && styles.activeLabel,
-            ]}
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.id;
+
+        return (
+          <TouchableOpacity
+            key={tab.id}
+            style={styles.tab}
+            activeOpacity={0.6}
+            onPress={() => handleTabPress(tab.id)}
           >
-            {tab.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
+            <View style={styles.tabContent}>
+              <Ionicons
+                name={isActive ? tab.icon : `${tab.icon}-outline` as any}
+                size={28}
+                color={isActive ? '#0A66C2' : '#666666'}
+              />
+              <Text
+                style={[
+                  styles.label,
+                  isActive && styles.activeLabel,
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {tab.label}
+              </Text>
+              {isActive && <View style={styles.activeIndicator} />}
+            </View>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderTopWidth: 0.5,
-    borderTopColor: '#dbdbdb',
-    paddingVertical: 6,
-    paddingBottom: 8,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#EFEFEF',
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+  },
+  tabContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    position: 'relative',
   },
   label: {
-    fontSize: 10,
-    color: '#8e8e8e',
+    fontSize: 11,
+    color: '#666666',
     fontWeight: '500',
-    marginTop: 2,
+    marginTop: 4,
+    letterSpacing: 0.2,
   },
   activeLabel: {
-    color: '#262626',
+    color: '#0A66C2',
+    fontWeight: '600',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    top: -8,
+    width: 32,
+    height: 3,
+    backgroundColor: '#0A66C2',
+    borderRadius: 2,
   },
 });
 
 export default BottomNavigation;
+

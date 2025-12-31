@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import BottomNavigation from '../../components/BottomNavigation';
+import CreateEventWizard from '../../pages/organizer/CreateEventWizard';
 import { EventCategory, LocationType } from '../../utils/eventTypes';
 
 interface CreateEventScreenProps {
@@ -478,84 +479,28 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ navigation }) => 
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#262626" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Event</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      {/* Progress Indicator */}
-      <View style={styles.progressContainer}>
-        {[1, 2, 3].map((step) => (
-          <View key={step} style={styles.progressStepContainer}>
-            <View
-              style={[
-                styles.progressStep,
-                currentStep >= step && styles.progressStepActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.progressStepText,
-                  currentStep >= step && styles.progressStepTextActive,
-                ]}
-              >
-                {step}
-              </Text>
-            </View>
-            {step < 3 && (
-              <View
-                style={[
-                  styles.progressLine,
-                  currentStep > step && styles.progressLineActive,
-                ]}
-              />
-            )}
-          </View>
-        ))}
-      </View>
-
-      {/* Step Labels */}
-      <View style={styles.stepLabels}>
-        <Text style={[styles.stepLabel, currentStep === 1 && styles.stepLabelActive]}>
-          Basic Info
-        </Text>
-        <Text style={[styles.stepLabel, currentStep === 2 && styles.stepLabelActive]}>
-          Schedule
-        </Text>
-        <Text style={[styles.stepLabel, currentStep === 3 && styles.stepLabelActive]}>
-          Publish
-        </Text>
-      </View>
-
-      {/* Step Content */}
-      {currentStep === 1 && renderStep1()}
-      {currentStep === 2 && renderStep2()}
-      {currentStep === 3 && renderStep3()}
-
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
-        {currentStep < 3 ? (
-          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-            <Text style={styles.nextButtonText}>Next</Text>
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
+      {/* Enhanced Header with My Events and My Tickets */}
+      <View style={styles.headerContainer}>
+        <View style={styles.headerBar}>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => navigation?.navigate?.('OrganizerMyEvents')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="calendar" size={18} color="#0a66c2" />
+            <Text style={styles.headerBtnText}>My Events</Text>
           </TouchableOpacity>
-        ) : (
-          <>
-            <TouchableOpacity style={styles.draftButton} onPress={handleSaveDraft}>
-              <Text style={styles.draftButtonText}>Save Draft</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.publishButton} onPress={handlePublish}>
-              <Text style={styles.publishButtonText}>Publish</Text>
-            </TouchableOpacity>
-          </>
-        )}
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => navigation?.navigate?.('MyTickets')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="ticket" size={18} color="#0a66c2" />
+            <Text style={styles.headerBtnText}>My Tickets</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-
-      {/* Bottom Navigation */}
+      <CreateEventWizard />
       <BottomNavigation activeTab="Create" navigation={navigation} />
     </SafeAreaView>
   );
@@ -565,6 +510,46 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fafafa',
+  },
+  headerContainer: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    paddingBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  headerBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  headerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: '#f0f7ff',
+    borderWidth: 1,
+    borderColor: '#d0e7ff',
+    shadowColor: '#0a66c2',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  headerBtnText: {
+    color: '#0a66c2',
+    fontWeight: '700',
+    fontSize: 14,
   },
   header: {
     flexDirection: 'row',

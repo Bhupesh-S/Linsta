@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Story } from '../utils/types';
@@ -26,10 +27,12 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({ stories, onStoryPress }) 
         <View style={styles.storyItem}>
           <View style={[styles.storyRing, styles.addStoryRing]}>
             <View style={styles.storyAvatar}>
-              <Ionicons name="add" size={24} color="#0a66c2" />
+              <Ionicons name="add" size={28} color="#0A66C2" />
             </View>
           </View>
-          <Text style={styles.storyName}>Your Story</Text>
+          <Text style={styles.storyName} numberOfLines={1} ellipsizeMode="tail">
+            Your Story
+          </Text>
         </View>
 
         {/* Other Stories */}
@@ -42,10 +45,10 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({ stories, onStoryPress }) 
           >
             <View style={styles.storyRing}>
               <View style={styles.storyAvatar}>
-                <Ionicons name={story.user.avatar as any} size={24} color="#262626" />
+                <Ionicons name={story.user.avatar as any} size={28} color="#1D2226" />
               </View>
             </View>
-            <Text style={styles.storyName} numberOfLines={1}>
+            <Text style={styles.storyName} numberOfLines={1} ellipsizeMode="tail">
               {story.user.name.split(' ')[0]}
             </Text>
           </TouchableOpacity>
@@ -57,50 +60,80 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({ stories, onStoryPress }) 
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#dbdbdb',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EFEFEF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
   },
   scrollContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   storyItem: {
     alignItems: 'center',
-    marginHorizontal: 6,
-    width: 70,
+    width: 76,
   },
   storyRing: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    padding: 2,
-    borderWidth: 2,
-    borderColor: '#e1306c',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    padding: 3,
+    borderWidth: 2.5,
+    borderColor: '#E1306C',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#E1306C',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   addStoryRing: {
-    borderColor: '#dbdbdb',
-    borderWidth: 1,
+    borderColor: '#DBDBDB',
+    borderWidth: 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+      },
+    }),
   },
   storyAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#fafafa',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F8F9FA',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
   },
   storyName: {
     fontSize: 12,
-    color: '#262626',
+    color: '#1D2226',
     marginTop: 2,
     textAlign: 'center',
+    fontWeight: '500',
   },
 });
 
 export default StoryCarousel;
+

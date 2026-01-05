@@ -3,6 +3,7 @@ import { Event, IEvent } from "./event.model";
 import { EventRsvp, IEventRsvp } from "./rsvp.model";
 import { Types } from "mongoose";
 import notificationService from "../notifications/notification.service";
+import analyticsService from "../analytics/analytics.service";
 
 export class EventService {
   // Create a new event
@@ -26,11 +27,40 @@ export class EventService {
     return event;
   }
 
-  // Get all events
-  static async getAllEvents(): Promise<IEvent[]> {
-    const events = await Event.find()
+  // Get all events with optional search and filters
+  static async getAllEvents(
+    search?: string,
+    category?: string,
+    upcoming?: boolean,
+    limit: number = 20,
+    skip: number = 0
+  ): Promise<IEvent[]> {
+    // Build query object
+    const query: any = {};
+
+    // Search by title (case-insensitive regex)
+    if (search && search.trim()) {
+      query.title = { $regex: search.trim(), $options: "i" };
+    }
+
+    // Filter by category
+    if (category && category.trim()) {
+      query.category = { $regex: category.trim(), $options: "i" };
+    }
+
+    // Filter for upcoming events (date >= today)
+    if (upcoming === true) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
+      query.date = { $gte: today };
+    }
+
+    const events = await Event.find(query)
       .populate("createdBy", "name email")
-      .sort({ createdAt: -1 });
+      .sort({ date: -1, createdAt: -1 })
+      .limit(limit)
+      .skip(skip);
+
     return events;
   }
 
@@ -43,6 +73,11 @@ export class EventService {
 
     // Get attendee count
     const attendeeCount = await EventRsvp.countDocuments({ eventId });
+
+    // Track event view asynchronously (don't wait)
+    analyticsService.trackEventView(eventId).catch((err) => {
+      console.error("Failed to track event view:", err);
+    });
 
     return {
       ...event.toObject(),
@@ -72,6 +107,16 @@ export class EventService {
     const rsvp = await EventRsvp.create({
       eventId: new Types.ObjectId(eventId),
       userId: new Types.ObjectId(userId),
+    });
+
+    // Track RSVP analytics asynchronously
+    analyticsService.trackEventRSVP(eventId).catch((err) => {
+      console.error("Failed to track RSVP:", err);
+    });
+
+    // Log user activity
+    analyticsService.logUserActivity(userId, "RSVP_EVENT", eventId).catch((err) => {
+      console.error("Failed to log RSVP activity:", err);
     });
 
     // Notify event creator (if not the RSVP user)

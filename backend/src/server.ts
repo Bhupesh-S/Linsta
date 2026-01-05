@@ -1,7 +1,9 @@
 // Server startup
 import dotenv from "dotenv";
+import http from "http";
 import app from "./app";
 import { connectDB } from "./config/db";
+import { initializeSocket } from "./socket/socket";
 
 // Load environment variables
 dotenv.config();
@@ -13,8 +15,14 @@ const startServer = async (): Promise<void> => {
     // Connect to MongoDB
     await connectDB();
 
+    // Create HTTP server
+    const server = http.createServer(app);
+
+    // Initialize Socket.IO
+    initializeSocket(server);
+
     // Start server
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`✓ Server running on port ${PORT}`);
     });
   } catch (error) {

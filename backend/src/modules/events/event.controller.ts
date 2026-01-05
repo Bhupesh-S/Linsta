@@ -40,10 +40,24 @@ export class EventController {
     }
   }
 
-  // GET /api/events - Get all events
+  // GET /api/events - Get all events with optional search & filters
   static async getAllEvents(req: Request, res: Response): Promise<void> {
     try {
-      const events = await EventService.getAllEvents();
+      // Get query parameters
+      const search = req.query.search as string | undefined;
+      const category = req.query.category as string | undefined;
+      const upcoming = req.query.upcoming === "true"; // Convert string to boolean
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+      const skip = parseInt(req.query.skip as string) || 0;
+
+      const events = await EventService.getAllEvents(
+        search,
+        category,
+        upcoming,
+        limit,
+        skip
+      );
+
       res.status(200).json(events);
     } catch (error: any) {
       res.status(500).json({ error: error.message });

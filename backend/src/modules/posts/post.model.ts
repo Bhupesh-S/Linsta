@@ -34,5 +34,6 @@ const postSchema = new Schema<IPost>(
 postSchema.index({ authorId: 1, createdAt: -1 });
 postSchema.index({ eventId: 1, createdAt: -1 });
 postSchema.index({ createdAt: -1 });
+postSchema.index({ caption: "text" }); // Full-text search on caption
 
 export const Post = model<IPost>("Post", postSchema);

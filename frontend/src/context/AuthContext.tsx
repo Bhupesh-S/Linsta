@@ -43,6 +43,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loadStoredAuth();
   }, []);
 
+  // Log authentication state changes
+  useEffect(() => {
+    console.log('🔐 AuthContext: isAuthenticated changed to:', isAuthenticated);
+    console.log('🔐 AuthContext: user:', user);
+    console.log('🔐 AuthContext: token:', token ? 'Present' : 'None');
+  }, [isAuthenticated]);
+
   const loadStoredAuth = async () => {
     try {
       const storedToken = await AsyncStorage.getItem('token');
@@ -65,19 +72,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('📡 AuthContext: Starting login...');
       const response = await authApi.login(data);
       
-      console.log('📡 AuthContext: Login response received');
+      console.log('📡 AuthContext: Login response received', { hasToken: !!response.token, hasUser: !!response.user });
       
       // Store token and user data
       await AsyncStorage.setItem('token', response.token);
       await AsyncStorage.setItem('user', JSON.stringify(response.user));
       
-      console.log('✅ AuthContext: Token and user stored');
+      console.log('✅ AuthContext: Token and user stored in AsyncStorage');
       
       setToken(response.token);
       setUser(response.user);
       setIsAuthenticated(true);
       
-      console.log('✅ AuthContext: isAuthenticated set to true');
+      console.log('✅ AuthContext: State updated - isAuthenticated set to true');
+      console.log('✅ AuthContext: User:', response.user);
     } catch (error) {
       console.error('❌ AuthContext: Login failed', error);
       throw error;

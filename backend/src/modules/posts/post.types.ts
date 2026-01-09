@@ -14,7 +14,7 @@ export interface PostResponse {
   _id: string;
   authorId: string;
   eventId?: string;
-  caption: string;
+  caption?: string;
   media?: PostMediaResponse[];
   author?: {
     _id: string;

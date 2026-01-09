@@ -7,8 +7,10 @@ let API_BASE_URL = 'http://localhost:5000'; // Fallback default
 // Common backend endpoints to try (without specific IPs)
 const getCommonUrls = (): string[] => {
   const urls = [
-    'http://10.0.2.2:5000',      // Android emulator
-    'http://localhost:5000',     // Localhost/iOS simulator
+    'http://10.0.2.2:5000',         // Android emulator
+    'http://192.168.43.114:5000',   // Your PC's IP on mobile hotspot (update if needed)
+    'http://10.46.192.61:5000',     // Alternative network IP
+    'http://localhost:5000',        // Localhost/iOS simulator
   ];
   
   // In development, the app will auto-detect the correct URL on first API call
@@ -23,33 +25,41 @@ export const testConnection = async (): Promise<string | null> => {
   for (const url of urls) {
     try {
       console.log(`Testing: ${url}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
       const response = await fetch(`${url}/api/auth/login`, { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'test', password: 'test' }),
-        signal: AbortSignal.timeout(2000)
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       // Any response (even errors) means server is reachable
       console.log(`✅ Server found at: ${url}`);
       API_BASE_URL = url;
       return url;
     } catch (error: any) {
-      console.log(`❌ Not reachable: ${url}`);
+      console.log(`❌ Not reachable: ${url}`, error.message);
     }
   }
   
   console.log('❌ No backend server found. Using fallback:', API_BASE_URL);
-  return API_BASE_URL;
+  return null;
 };
 
 // Get current API URL (with auto-detection on first call)
 let connectionTested = false;
-const getApiUrl = async (): Promise<string> => {
-  if (!connectionTested && __DEV__) {
+export const getApiUrl = async (): Promise<string> => {
+  if (!connectionTested) {
     connectionTested = true;
     const detectedUrl = await testConnection();
     if (detectedUrl) {
       API_BASE_URL = detectedUrl;
+      console.log('🎯 Using detected backend URL:', API_BASE_URL);
+    } else {
+      console.log('⚠️ No backend detected, using fallback:', API_BASE_URL);
     }
   }
   return API_BASE_URL;
@@ -67,11 +77,11 @@ export interface LoginData {
 }
 
 export interface AuthResponse {
-  user: {t apiUrl = await getApiUrl();
-      console.log('Registering user with:', { email: data.email, name: data.name });
-      console.log('API URL:', `${apiUrl}/api/auth/register`);
-      
-      const response = await fetch(`${apiUrl
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    status: string;
   };
   token: string;
 }
@@ -79,10 +89,11 @@ export interface AuthResponse {
 export const authApi = {
   register: async (data: RegisterData): Promise<AuthResponse> => {
     try {
+      const apiUrl = await getApiUrl();
       console.log('Registering user with:', { email: data.email, name: data.name });
-      console.log('API URL:', `${API_BASE_URL}/api/auth/register`);
+      console.log('API URL:', `${apiUrl}/api/auth/register`);
       
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      const response = await fetch(`${apiUrl}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,11 +107,10 @@ export const authApi = {
       if (!response.ok) {
         console.error('Registration failed:', result.error);
         throw new Error(result.error || 'Registration failed');
-      }t apiUrl = await getApiUrl();
-      console.log('🔐 Logging in user:', data.email);
-      console.log('API URL:', `${apiUrl}/api/auth/login`);
-      
-      const response = await fetch(`${apiUrl
+      }
+
+      return result;
+    } catch (error) {
       console.error('Registration error:', error);
       throw error;
     }
@@ -108,10 +118,11 @@ export const authApi = {
 
   login: async (data: LoginData): Promise<AuthResponse> => {
     try {
+      const apiUrl = await getApiUrl();
       console.log('🔐 Logging in user:', data.email);
-      console.log('API URL:', `${API_BASE_URL}/api/auth/login`);
+      console.log('API URL:', `${apiUrl}/api/auth/login`);
       
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,8 +137,7 @@ export const authApi = {
 
       if (!response.ok) {
         console.error('Login failed:', result.error);
-        thapiUrl = await getApiUrl();
-    const response = await fetch(`${apiUrlailed');
+        throw new Error(result.error || 'Login failed');
       }
 
       return result;
@@ -138,15 +148,15 @@ export const authApi = {
   },
 
   googleLogin: async (idToken: string): Promise<AuthResponse> => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+    const apiUrl = await getApiUrl();
+    const response = await fetch(`${apiUrl}/api/auth/google`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ idToken }),
     });
-apiUrl = await getApiUrl();
-    const response = await fetch(`${apiUrl
+
     const result = await response.json();
 
     if (!response.ok) {
@@ -157,15 +167,15 @@ apiUrl = await getApiUrl();
   },
 
   verifyOTP: async (email: string, code: string): Promise<AuthResponse> => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+    const apiUrl = await getApiUrl();
+    const response = await fetch(`${apiUrl}/api/auth/verify-otp`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ email, code }),
     });
-apiUrl = await getApiUrl();
-    const response = await fetch(`${apiUrl
+
     const result = await response.json();
 
     if (!response.ok) {
@@ -176,7 +186,8 @@ apiUrl = await getApiUrl();
   },
 
   resendOTP: async (email: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/resend-otp`, {
+    const apiUrl = await getApiUrl();
+    const response = await fetch(`${apiUrl}/api/auth/resend-otp`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -191,3 +202,20 @@ apiUrl = await getApiUrl();
     }
   },
 };
+
+// Helper function to get authorization header
+export const getAuthHeader = async (): Promise<{ Authorization: string }> => {
+  const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+  const token = await AsyncStorage.getItem('token');
+  
+  if (!token) {
+    console.warn('⚠️ No token found in AsyncStorage');
+    throw new Error('No authentication token found');
+  }
+  
+  console.log('🔑 Token retrieved for auth header:', token.substring(0, 20) + '...');
+  return { Authorization: `Bearer ${token}` };
+};
+
+// Export API_BASE_URL for backward compatibility
+export { API_BASE_URL };

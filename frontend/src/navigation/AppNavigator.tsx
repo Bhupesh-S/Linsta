@@ -3,6 +3,7 @@ import HomeScreen from '../screens/home/HomeScreen';
 import EventsDiscoveryScreen from '../screens/events/EventsDiscoveryScreen';
 import EventDetailScreen from '../screens/events/EventDetailScreen';
 import CreateEventScreen from '../screens/events/CreateEventScreen';
+import CreatePostScreen from '../screens/posts/CreatePostScreen';
 import { NetworkScreen } from '../screens/NetworkScreen';
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -40,6 +41,7 @@ type Screen =
   | 'Events'
   | 'EventDetail'
   | 'CreateEvent'
+  | 'CreatePost'
   | 'MyTickets'
   | 'TicketDetail'
   | 'OrganizerMyEvents'
@@ -86,10 +88,10 @@ const AppNavigatorInner = () => {
     console.log('🔄 useEffect triggered: isAuthenticated =', isAuthenticated, ', currentScreen =', navState.currentScreen);
     if (isAuthenticated && (navState.currentScreen === 'Login' || navState.currentScreen === 'Signup' || navState.currentScreen === 'OTPVerification')) {
       console.log('✅ User authenticated, navigating to Home');
-      setNavState(prev => ({ ...prev, currentScreen: 'Home' }));
-    } else if (!isAuthenticated && navState.currentScreen === 'Home') {
+      setNavState(prev => ({ ...prev, currentScreen: 'Home', history: [] }));
+    } else if (!isAuthenticated && navState.currentScreen !== 'Login' && navState.currentScreen !== 'Signup' && navState.currentScreen !== 'OTPVerification' && navState.currentScreen !== 'Splash' && navState.currentScreen !== 'OAuthSelection') {
       console.log('🔒 User logged out, navigating to Login');
-      setNavState(prev => ({ ...prev, currentScreen: 'Login' }));
+      setNavState(prev => ({ ...prev, currentScreen: 'Login', history: [] }));
     }
   }, [isAuthenticated, navState.currentScreen]);
 
@@ -211,6 +213,9 @@ const AppNavigatorInner = () => {
       
       case 'CreateEvent':
         return <CreateEventScreen navigation={navigation} />;
+      
+      case 'CreatePost':
+        return <CreatePostScreen navigation={navigation} />;
       
       case 'MyTickets':
         return <MyTicketsScreen navigation={navigation} />;

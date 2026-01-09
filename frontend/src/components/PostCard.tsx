@@ -1,35 +1,84 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Post } from '../utils/types';
+import { postsApi, Post as BackendPost } from '../services/posts.api';
 
 interface PostCardProps {
-  post: Post;
+  post: Post | BackendPost;
+  onLikeUpdated?: () => void;
 }
 
-const PostCard: React.FC<PostCardProps> = ({ post }) => {
+const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated }) => {
+  // Check if post is from backend (has _id) or mock (has id)
+  const isBackendPost = '_id' in post;
+  const [likeCount, setLikeCount] = useState(isBackendPost ? (post as BackendPost).likeCount : (post as Post).likes);
+  const [isLiked, setIsLiked] = useState(isBackendPost ? (post as BackendPost).userLiked : false);
+  const [isLiking, setIsLiking] = useState(false);
+
+  // Debug: Log media data
+  if (isBackendPost) {
+    const backendPost = post as BackendPost;
+    console.log('📸 Post media data:', {
+      postId: backendPost._id,
+      hasMedia: !!backendPost.media,
+      mediaCount: backendPost.media?.length || 0,
+      mediaUrls: backendPost.media?.map(m => m.mediaUrl) || []
+    });
+  }
+
+  // Get post data based on type
+  const userName = isBackendPost ? (post as BackendPost).author?.name : (post as Post).user.name;
+  const userTitle = isBackendPost ? (post as BackendPost).author?.email : (post as Post).user.title;
+  const content = isBackendPost ? (post as BackendPost).caption : (post as Post).content;
+  const timestamp = isBackendPost ? new Date((post as BackendPost).createdAt).toLocaleDateString() : (post as Post).timestamp;
+  const commentCount = isBackendPost ? (post as BackendPost).commentCount : (post as Post).comments;
+  const postId = isBackendPost ? (post as BackendPost)._id : (post as Post).id;
+
+  const handleLike = async () => {
+    if (!isBackendPost || isLiking) return;
+
+    setIsLiking(true);
+    try {
+      if (isLiked) {
+        const result = await postsApi.unlikePost(postId);
+        setLikeCount(result.likeCount);
+        setIsLiked(false);
+        console.log('❤️ Post unliked');
+      } else {
+        const result = await postsApi.likePost(postId);
+        setLikeCount(result.likeCount);
+        setIsLiked(true);
+        console.log('💙 Post liked');
+      }
+      onLikeUpdated?.();
+    } catch (error) {
+      console.error('❌ Like error:', error);
+      Alert.alert('Error', 'Failed to update like');
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.userInfo}>
           <View style={styles.avatarContainer}>
-            <Ionicons name={post.user.avatar as any} size={24} color="#1D2226" />
+            <Ionicons name="person-circle" size={40} color="#0A66C2" />
           </View>
           <View style={styles.userDetails}>
             <View style={styles.nameRow}>
               <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
-                {post.user.name}
+                {userName}
               </Text>
-              {post.user.verified && (
-                <Ionicons name="checkmark-circle" size={16} color="#0A66C2" />
-              )}
             </View>
             <Text style={styles.userTitle} numberOfLines={1} ellipsizeMode="tail">
-              {post.user.title}
+              {userTitle}
             </Text>
             <Text style={styles.timestamp} numberOfLines={1}>
-              {post.timestamp}
+              {timestamp}
             </Text>
           </View>
         </View>
@@ -40,13 +89,31 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
       {/* Content */}
       <Text style={styles.content} numberOfLines={10} ellipsizeMode="tail">
-        {post.content}
+        {content}
       </Text>
 
-      {/* Image */}
-      {post.image && (
-        <View style={styles.imageContainer}>
-          <Ionicons name={post.image as any} size={100} color="#FFFFFF" />
+      {/* Media Images */}
+      {isBackendPost && (post as BackendPost).media && (post as BackendPost).media!.length > 0 && (
+        <View style={styles.mediaContainer}>
+          {(post as BackendPost).media!.map((mediaItem, index) => {
+            if (mediaItem.mediaType === 'image') {
+              return (
+                <Image
+                  key={mediaItem._id}
+                  source={{ uri: mediaItem.mediaUrl }}
+                  style={styles.postImage}
+                  resizeMode="cover"
+                  onError={(error) => {
+                    console.error('❌ Image load error:', mediaItem.mediaUrl, error.nativeEvent.error);
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Image loaded:', mediaItem.mediaUrl);
+                  }}
+                />
+              );
+            }
+            return null;
+          })}
         </View>
       )}
 
@@ -56,19 +123,29 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           <View style={styles.likeIcon}>
             <Ionicons name="heart" size={14} color="#FFFFFF" />
           </View>
-          <Text style={styles.statsText} numberOfLines={1}> {post.likes}</Text>
+          <Text style={styles.statsText} numberOfLines={1}> {likeCount}</Text>
         </View>
         <View style={styles.rightStats}>
-          <Text style={styles.statsText} numberOfLines={1}>{post.comments} comments</Text>
-          <Text style={styles.statsText} numberOfLines={1}>{post.shares} shares</Text>
+          <Text style={styles.statsText} numberOfLines={1}>{commentCount} comments</Text>
         </View>
       </View>
 
       {/* Action Buttons */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionButton} activeOpacity={0.6}>
-          <Ionicons name="heart-outline" size={24} color="#666666" />
-          <Text style={styles.actionText} numberOfLines={1}>Like</Text>
+        <TouchableOpacity 
+          style={styles.actionButton} 
+          activeOpacity={0.6}
+          onPress={handleLike}
+          disabled={isLiking}
+        >
+          <Ionicons 
+            name={isLiked ? "heart" : "heart-outline"} 
+            size={24} 
+            color={isLiked ? "#FF3250" : "#666666"} 
+          />
+          <Text style={[styles.actionText, isLiked && styles.actionTextLiked]} numberOfLines={1}>
+            {isLiked ? 'Liked' : 'Like'}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton} activeOpacity={0.6}>
           <Ionicons name="chatbubble-outline" size={24} color="#666666" />
@@ -159,6 +236,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 12,
   },
+  mediaContainer: {
+    width: '100%',
+    marginBottom: 8,
+  },
+  postImage: {
+    width: '100%',
+    height: 300,
+    backgroundColor: '#F0F0F0',
+  },
   imageContainer: {
     width: '100%',
     height: 300,
@@ -216,6 +302,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666666',
     fontWeight: '600',
+  },
+  actionTextLiked: {
+    color: '#FF3250',
   },
 });
 

@@ -2,6 +2,7 @@
 import { Router } from "express";
 import { PostController } from "./post.controller";
 import { authMiddleware } from "../../middlewares/auth.middleware";
+import { upload } from "../../middlewares/upload.middleware";
 
 const router = Router();
 
@@ -10,6 +11,7 @@ router.get("/:id", PostController.getPost);
 router.get("/:id/comments", PostController.getComments);
 
 // Protected routes
+router.post("/upload", authMiddleware, upload.array('media', 5), PostController.createPostWithMedia);
 router.post("/", authMiddleware, PostController.createPost);
 router.get("/", authMiddleware, PostController.getFeed);
 router.delete("/:id", authMiddleware, PostController.deletePost);

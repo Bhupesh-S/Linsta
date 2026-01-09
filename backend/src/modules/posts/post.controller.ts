@@ -2,9 +2,68 @@
 import { Request, Response } from "express";
 import { PostService } from "./post.service";
 import { CreatePostRequest, CommentRequest } from "./post.types";
+import { uploadImage, uploadVideo } from "../../config/cloudinary";
 
 export class PostController {
-  // POST /api/posts - Create post
+  // POST /api/posts/upload - Create post with media uploads
+  static async createPostWithMedia(req: Request, res: Response): Promise<void> {
+    try {
+      const { caption, eventId } = req.body;
+      const userId = req.userId;
+      const files = req.files as Express.Multer.File[];
+
+      // Validation
+      if (!caption) {
+        res.status(400).json({ error: "Caption is required" });
+        return;
+      }
+
+      if (!userId) {
+        res.status(401).json({ error: "User not authenticated" });
+        return;
+      }
+
+      // Upload media files to Cloudinary
+      const media: { url: string; type: "image" | "video" }[] = [];
+      
+      console.log('📁 Files received:', files?.length || 0);
+      
+      if (files && files.length > 0) {
+        for (const file of files) {
+          try {
+            console.log('📤 Uploading file:', file.originalname, 'type:', file.mimetype);
+            // Convert buffer to base64 data URI
+            const b64 = Buffer.from(file.buffer).toString('base64');
+            const dataURI = `data:${file.mimetype};base64,${b64}`;
+
+            let url: string;
+            if (file.mimetype.startsWith('image/')) {
+              url = await uploadImage(dataURI);
+              console.log('✅ Image uploaded to Cloudinary:', url);
+              media.push({ url, type: 'image' });
+            } else if (file.mimetype.startsWith('video/')) {
+              url = await uploadVideo(dataURI);
+              console.log('✅ Video uploaded to Cloudinary:', url);
+              media.push({ url, type: 'video' });
+            }
+          } catch (uploadError) {
+            console.error('❌ Media upload failed:', uploadError);
+            // Continue with other files
+          }
+        }
+      }
+
+      console.log('📸 Total media uploaded:', media.length);
+      console.log('📸 Media array:', JSON.stringify(media, null, 2));
+
+      const post = await PostService.createPost({ caption, eventId, media }, userId);
+      res.status(201).json(post);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // POST /api/posts - Create post (without file upload, media URLs provided)
   static async createPost(req: Request, res: Response): Promise<void> {
     try {
       const { caption, eventId, media } = req.body as CreatePostRequest;

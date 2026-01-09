@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   ViewToken,
   Platform,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +20,7 @@ import VideoReel from '../../components/VideoReel';
 import BottomNavigation from '../../components/BottomNavigation';
 import StoryViewer from '../../components/StoryViewer';
 import { mockStories, mockPosts } from '../../utils/mockData';
+import { postsApi, Post } from '../../services/posts.api';
 
 interface HomeScreenProps {
   navigation?: any;
@@ -27,6 +30,35 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [activeReelId, setActiveReelId] = useState<string | null>(null);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch posts on mount
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      console.log('📱 Fetching posts...');
+      const fetchedPosts = await postsApi.getFeed(20, 0);
+      setPosts(fetchedPosts);
+      console.log('✅ Posts loaded:', fetchedPosts.length);
+    } catch (error) {
+      console.error('❌ Failed to fetch posts:', error);
+      // Use mock data as fallback
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchPosts();
+    setRefreshing(false);
+  };
 
   const renderFeedItem = ({ item }: { item: any }) => {
     if (item.isReel) {
@@ -104,21 +136,55 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       {/* Stories */}
       <StoryCarousel stories={mockStories} onStoryPress={handleStoryPress} />
 
+      {/* Loading indicator */}
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0A66C2" />
+          <Text style={styles.loadingText}>Loading posts...</Text>
+        </View>
+      )}
+
       {/* Feed with FlatList for smooth scrolling */}
-      <FlatList
-        data={mockPosts}
-        renderItem={renderFeedItem}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.feedContent}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={5}
-        updateCellsBatchingPeriod={50}
-        initialNumToRender={3}
-        windowSize={5}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-      />
+      {!loading && (
+        <FlatList
+          data={posts.length > 0 ? posts : mockPosts}
+          renderItem={renderFeedItem}
+          keyExtractor={(item) => item._id || item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.feedContent}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={5}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={3}
+          windowSize={5}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#0A66C2']}
+              tintColor="#0A66C2"
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="newspaper-outline" size={48} color="#999" />
+              <Text style={styles.emptyText}>No posts yet</Text>
+              <Text style={styles.emptySubtext}>Pull down to refresh</Text>
+            </View>
+          }
+        />
+      )}
+
+      {/* Floating Action Button - Create Post */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation?.navigate?.('CreatePost')}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
 
       {/* Bottom Navigation */}
       <BottomNavigation activeTab="Home" navigation={navigation} />
@@ -213,6 +279,56 @@ const styles = StyleSheet.create({
   },
   feedContent: {
     paddingBottom: 90, // Increased to account for fixed bottom navigation
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 100,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#0A66C2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
 });
 

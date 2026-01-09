@@ -13,21 +13,32 @@ export class PostService {
     data: CreatePostRequest,
     userId: string
   ): Promise<PostResponse> {
+    // Determine post type based on media
+    let postType: "text" | "image" | "video" | "link" = "text";
+    if (data.media && data.media.length > 0) {
+      postType = data.media[0].type === "video" ? "video" : "image";
+    }
+
     // Create post
     const post = await Post.create({
       authorId: new Types.ObjectId(userId),
+      authorRole: "user", // Default role, can be enhanced later
+      type: postType,
       caption: data.caption,
       eventId: data.eventId ? new Types.ObjectId(data.eventId) : undefined,
     });
 
     // Add media if provided
     if (data.media && data.media.length > 0) {
+      console.log('📸 Inserting media for post:', post._id, 'media count:', data.media.length);
       const mediaDocuments = data.media.map((m) => ({
         postId: post._id,
         mediaType: m.type,
         mediaUrl: m.url,
       }));
-      await PostMedia.insertMany(mediaDocuments);
+      console.log('📸 Media documents to insert:', JSON.stringify(mediaDocuments, null, 2));
+      const insertedMedia = await PostMedia.insertMany(mediaDocuments);
+      console.log('✅ Media inserted successfully:', insertedMedia.length, 'documents');
     }
 
     // Return populated post
@@ -47,6 +58,7 @@ export class PostService {
     const postsWithCounts: PostResponse[] = await Promise.all(
       posts.map(async (post) => {
         const media = await PostMedia.find({ postId: post._id });
+        console.log('🔍 Fetching media for post:', post._id, '- Found:', media.length, 'items');
         const likeCount = await Like.countDocuments({ postId: post._id });
         const commentCount = await Comment.countDocuments({ postId: post._id });
         const userLiked = await Like.findOne({ postId: post._id, userId: new Types.ObjectId(userId) });
@@ -98,6 +110,10 @@ export class PostService {
     }
 
     const media = await PostMedia.find({ postId: new Types.ObjectId(postId) });
+    console.log('🔍 Fetching media for single post:', postId, '- Found:', media.length, 'items');
+    if (media.length > 0) {
+      console.log('📸 Media URLs:', media.map(m => m.mediaUrl));
+    }
     const likeCount = await Like.countDocuments({ postId: new Types.ObjectId(postId) });
     const commentCount = await Comment.countDocuments({ postId: new Types.ObjectId(postId) });
     const userLiked = userId

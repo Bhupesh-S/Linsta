@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useUser } from '../../context/UserContext';
+import { useAuth } from '../../context/AuthContext';
 import ProfileHeader from '../../components/profile/ProfileHeader';
 import ExperienceCard from '../../components/profile/ExperienceCard';
 import SkillTag from '../../components/profile/SkillTag';
@@ -12,13 +13,20 @@ interface Props { navigation?: any; username?: string }
 
 const ProfileScreen: React.FC<Props> = ({ navigation, username = 'johndoe' }) => {
   const { colors } = useTheme();
-  const { logout } = useUser();
+  const { logout: logoutUser } = useUser();
+  const { logout: logoutAuth } = useAuth();
 
   const onConnect = () => { };
 
-  const handleLogout = () => {
-    logout();
-    navigation?.navigate?.('Login');
+  const handleLogout = async () => {
+    try {
+      await logoutAuth();  // Logout from AuthContext (clears isAuthenticated)
+      logoutUser();        // Logout from UserContext (clears user state)
+      console.log('✅ Logout successful, isAuthenticated should be false now');
+      // Navigation will happen automatically via AppNavigator useEffect
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+    }
   };
 
   return (

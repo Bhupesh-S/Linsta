@@ -6,6 +6,8 @@ export interface IPost extends Document {
   authorRole: string;
   type: "text" | "image" | "video" | "link";
   text?: string;
+  caption?: string;
+  eventId?: Types.ObjectId;
   media?: {
     url: string;
     type: string;
@@ -45,6 +47,14 @@ const postSchema = new Schema<IPost>(
     text: {
       type: String,
       trim: true,
+    },
+    caption: {
+      type: String,
+      trim: true,
+    },
+    eventId: {
+      type: Schema.Types.ObjectId,
+      ref: "Event",
     },
     media: {
       url: {

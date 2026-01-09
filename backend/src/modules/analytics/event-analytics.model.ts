@@ -33,7 +33,6 @@ const EventAnalyticsSchema = new Schema<IEventAnalytics>(
 );
 
 // Index for efficient queries
-EventAnalyticsSchema.index({ eventId: 1 });
 EventAnalyticsSchema.index({ viewsCount: -1 });
 EventAnalyticsSchema.index({ rsvpCount: -1 });
 

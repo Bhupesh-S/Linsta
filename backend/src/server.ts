@@ -1,29 +1,23 @@
 // Server startup
+// Load environment variables FIRST before any other imports
 import dotenv from "dotenv";
-import http from "http";
-import app from "./app";
-import { connectDB } from "./config/db";
-import { initializeSocket } from "./socket/socket";
-
-// Load environment variables
 dotenv.config();
 
-const PORT = process.env.PORT || 5000;
+import app from "./app";
+import { connectDB } from "./config/db";
+
+const PORT = Number(process.env.PORT) || 5000;
 
 const startServer = async (): Promise<void> => {
   try {
     // Connect to MongoDB
     await connectDB();
 
-    // Create HTTP server
-    const server = http.createServer(app);
-
-    // Initialize Socket.IO
-    initializeSocket(server);
-
-    // Start server
-    server.listen(PORT, () => {
+    // Start server - Listen on all network interfaces (0.0.0.0) to allow connections from emulator/devices
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`✓ Server running on port ${PORT}`);
+      console.log(`✓ Accessible at http://localhost:${PORT}`);
+      console.log(`✓ Accessible at http://192.168.43.114:${PORT}`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);

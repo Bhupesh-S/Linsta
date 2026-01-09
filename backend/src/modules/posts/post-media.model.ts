@@ -13,6 +13,7 @@ const postMediaSchema = new Schema<IPostMedia>(
       type: Schema.Types.ObjectId,
       ref: "Post",
       required: true,
+      index: true,
     },
     mediaType: {
       type: String,
@@ -29,7 +30,5 @@ const postMediaSchema = new Schema<IPostMedia>(
     timestamps: true,
   }
 );
-
-postMediaSchema.index({ postId: 1 });
 
 export const PostMedia = model<IPostMedia>("PostMedia", postMediaSchema);

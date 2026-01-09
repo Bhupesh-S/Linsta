@@ -7,8 +7,8 @@ let API_BASE_URL = 'http://localhost:5000'; // Fallback default
 // Common backend endpoints to try (without specific IPs)
 const getCommonUrls = (): string[] => {
   const urls = [
+    'http://192.168.43.114:5000',   // Your PC's IP on Wi-Fi
     'http://10.0.2.2:5000',         // Android emulator
-    'http://192.168.43.114:5000',   // Your PC's IP on mobile hotspot (update if needed)
     'http://10.46.192.61:5000',     // Alternative network IP
     'http://localhost:5000',        // Localhost/iOS simulator
   ];

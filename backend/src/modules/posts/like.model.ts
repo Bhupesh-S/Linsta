@@ -27,7 +27,6 @@ const likeSchema = new Schema<ILike>(
 
 // Unique index to prevent duplicate likes
 likeSchema.index({ postId: 1, userId: 1 }, { unique: true });
-likeSchema.index({ postId: 1 });
 likeSchema.index({ userId: 1 });
 
 export const Like = model<ILike>("Like", likeSchema);

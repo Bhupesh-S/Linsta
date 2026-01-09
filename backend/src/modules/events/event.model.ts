@@ -56,4 +56,9 @@ const eventSchema = new Schema<IEvent>({
   },
 });
 
+// Indexes for search performance
+eventSchema.index({ title: "text" });  // Full-text search on title
+eventSchema.index({ category: 1 });   // Filter by category
+eventSchema.index({ date: 1 });       // Sort by date
+
 export const Event = model<IEvent>("Event", eventSchema);

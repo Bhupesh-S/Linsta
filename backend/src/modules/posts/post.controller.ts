@@ -87,19 +87,21 @@ export class PostController {
     }
   }
 
-  // GET /api/posts - Get feed
+  // GET /api/posts - Get feed with optional search & filters
   static async getFeed(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.userId;
       const limit = Math.min(Number(req.query.limit) || 20, 100);
       const skip = Number(req.query.skip) || 0;
+      const search = req.query.search as string | undefined;
+      const eventId = req.query.eventId as string | undefined;
 
       if (!userId) {
         res.status(401).json({ error: "User not authenticated" });
         return;
       }
 
-      const posts = await PostService.getFeed(userId, limit, skip);
+      const posts = await PostService.getFeed(userId, limit, skip, search, eventId);
       res.status(200).json(posts);
     } catch (error: any) {
       res.status(500).json({ error: error.message });

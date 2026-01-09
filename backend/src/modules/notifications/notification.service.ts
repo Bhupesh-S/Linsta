@@ -1,6 +1,15 @@
 import Notification from './notification.model';
 import { NotificationData, NotificationResponse } from './notification.types';
 import mongoose from 'mongoose';
+import { Server as SocketIOServer } from 'socket.io';
+import { emitNotificationToUser } from '../../socket/notification.socket';
+
+let io: SocketIOServer | null = null;
+
+// Initialize Socket.IO instance for notification emission
+export const setSocketIO = (socketIO: SocketIOServer): void => {
+  io = socketIO;
+};
 
 export class NotificationService {
   /**
@@ -20,13 +29,26 @@ export class NotificationService {
     }
 
     try {
-      await Notification.create({
+      const notification = await Notification.create({
         userId: new mongoose.Types.ObjectId(receiverId),
         type,
         message,
         referenceId: new mongoose.Types.ObjectId(referenceId),
         isRead: false,
       });
+
+      // Emit notification in real-time if Socket.IO is initialized
+      if (io) {
+        emitNotificationToUser(io, receiverId, {
+          _id: notification._id,
+          userId: notification.userId,
+          type: notification.type,
+          message: notification.message,
+          referenceId: notification.referenceId,
+          isRead: notification.isRead,
+          createdAt: notification.createdAt,
+        });
+      }
     } catch (error) {
       // Log error but don't crash the main operation
       console.error('Failed to create notification:', error);

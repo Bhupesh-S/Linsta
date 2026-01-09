@@ -6,6 +6,7 @@ import { Comment, IComment } from "./comment.model";
 import { Types } from "mongoose";
 import { CreatePostRequest, PostResponse, CommentResponse } from "./post.types";
 import notificationService from "../notifications/notification.service";
+import analyticsService from "../analytics/analytics.service";
 
 export class PostService {
   // Create a new post with optional media
@@ -45,9 +46,28 @@ export class PostService {
     return this.getPostById(post._id.toString(), userId);
   }
 
-  // Get feed with latest posts
-  static async getFeed(userId: string, limit: number = 20, skip: number = 0): Promise<PostResponse[]> {
-    const posts = await Post.find()
+  // Get feed with latest posts (with optional search and filters)
+  static async getFeed(
+    userId: string,
+    limit: number = 20,
+    skip: number = 0,
+    search?: string,
+    eventId?: string
+  ): Promise<PostResponse[]> {
+    // Build query object
+    const query: any = {};
+
+    // Search by caption (case-insensitive regex)
+    if (search && search.trim()) {
+      query.caption = { $regex: search.trim(), $options: "i" };
+    }
+
+    // Filter by event
+    if (eventId && eventId.trim()) {
+      query.eventId = new Types.ObjectId(eventId);
+    }
+
+    const posts = await Post.find(query)
       .populate("authorId", "name email")
       .populate("eventId", "title")
       .sort({ createdAt: -1 })
@@ -176,6 +196,16 @@ export class PostService {
       userId: new Types.ObjectId(userId),
     });
 
+    // Track post like analytics asynchronously
+    analyticsService.trackPostLike(postId).catch((err) => {
+      console.error("Failed to track post like:", err);
+    });
+
+    // Log user activity
+    analyticsService.logUserActivity(userId, "LIKE_POST", postId).catch((err) => {
+      console.error("Failed to log like activity:", err);
+    });
+
     // Notify post author (if not the liker)
     const author = post.authorId.toString();
     if (author !== userId) {
@@ -223,6 +253,16 @@ export class PostService {
 
     // Populate user info
     const populatedComment = await comment.populate("userId", "name email");
+
+    // Track post comment analytics asynchronously
+    analyticsService.trackPostComment(postId).catch((err) => {
+      console.error("Failed to track post comment:", err);
+    });
+
+    // Log user activity
+    analyticsService.logUserActivity(userId, "COMMENT_POST", postId).catch((err) => {
+      console.error("Failed to log comment activity:", err);
+    });
 
     // Notify post author (if not the commenter)
     const author = post.authorId.toString();

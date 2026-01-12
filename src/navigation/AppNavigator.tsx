@@ -3,6 +3,10 @@ import HomeScreen from '../screens/home/HomeScreen';
 import EventsDiscoveryScreen from '../screens/events/EventsDiscoveryScreen';
 import EventDetailScreen from '../screens/events/EventDetailScreen';
 import CreateEventScreen from '../screens/events/CreateEventScreen';
+import CreateContentScreen from '../screens/CreateContentScreen';
+import CreateStoryScreen from '../screens/CreateStoryScreen';
+import CreateArticleScreen from '../screens/CreateArticleScreen';
+import CreateReelScreen from '../screens/CreateReelScreen';
 import { NetworkScreen } from '../screens/NetworkScreen';
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -40,6 +44,10 @@ type Screen =
   | 'Events'
   | 'EventDetail'
   | 'CreateEvent'
+  | 'CreateContent'
+  | 'CreateStory'
+  | 'CreateArticle'
+  | 'CreateReel'
   | 'MyTickets'
   | 'TicketDetail'
   | 'OrganizerMyEvents'
@@ -194,6 +202,18 @@ const AppNavigatorInner = () => {
       
       case 'CreateEvent':
         return <CreateEventScreen navigation={navigation} />;
+      
+      case 'CreateContent':
+        return <CreateContentScreen navigation={navigation} />;
+      
+      case 'CreateStory':
+        return <CreateStoryScreen navigation={navigation} />;
+      
+      case 'CreateArticle':
+        return <CreateArticleScreen navigation={navigation} />;
+      
+      case 'CreateReel':
+        return <CreateReelScreen navigation={navigation} />;
       
       case 'MyTickets':
         return <MyTicketsScreen navigation={navigation} />;

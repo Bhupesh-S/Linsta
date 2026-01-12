@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useUser } from '../../context/UserContext';
@@ -8,18 +8,42 @@ import ExperienceCard from '../../components/profile/ExperienceCard';
 import SkillTag from '../../components/profile/SkillTag';
 import MediaGrid from '../../components/profile/MediaGrid';
 import BottomNavigation from '../../components/BottomNavigation';
+import CreateContentModal from '../../components/CreateContentModal';
 
 interface Props { navigation?: any; username?: string }
 
 const ProfileScreen: React.FC<Props> = ({ navigation, username = 'johndoe' }) => {
   const { colors } = useTheme();
   const { logout } = useUser();
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const onConnect = () => { };
 
   const handleLogout = () => {
     logout();
     navigation?.navigate?.('Login');
+  };
+
+  const handleCreatePress = () => {
+    setShowCreateModal(true);
+  };
+
+  const handleCreateStory = () => {
+    Alert.alert('Create Story', 'Story creation coming soon!');
+  };
+
+  const handleCreatePost = () => {
+    Alert.alert('Write Article', 'Article creation coming soon!');
+  };
+
+  const handleCreateEvent = () => {
+    if (navigation) {
+      navigation.navigate('CreateEvent');
+    }
+  };
+
+  const handleCreateReel = () => {
+    Alert.alert('Record Reel', 'Reel recording coming soon!');
   };
 
   return (
@@ -96,7 +120,21 @@ const ProfileScreen: React.FC<Props> = ({ navigation, username = 'johndoe' }) =>
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <BottomNavigation activeTab="Profile" navigation={navigation} />
+      <BottomNavigation 
+        activeTab="Profile" 
+        navigation={navigation} 
+        onCreatePress={handleCreatePress}
+      />
+
+      {/* Create Content Modal */}
+      <CreateContentModal
+        visible={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreateStory={handleCreateStory}
+        onCreatePost={handleCreatePost}
+        onCreateEvent={handleCreateEvent}
+        onCreateReel={handleCreateReel}
+      />
     </View>
   );
 };

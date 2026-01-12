@@ -8,9 +8,10 @@ interface VideoReelProps {
   post: Post;
   isActive: boolean;
   onVisibilityChange?: (id: string, isVisible: boolean) => void;
+  onReelPress?: (post: Post) => void;
 }
 
-const VideoReel: React.FC<VideoReelProps> = ({ post, isActive, onVisibilityChange }) => {
+const VideoReel: React.FC<VideoReelProps> = ({ post, isActive, onVisibilityChange, onReelPress }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef<Video>(null);
 
@@ -62,7 +63,7 @@ const VideoReel: React.FC<VideoReelProps> = ({ post, isActive, onVisibilityChang
       {/* Video Container */}
       <TouchableOpacity 
         style={styles.videoContainer} 
-        onPress={handlePlayPause}
+        onPress={() => onReelPress?.(post)}
         activeOpacity={0.9}
       >
         {post.videoUri ? (
@@ -73,7 +74,7 @@ const VideoReel: React.FC<VideoReelProps> = ({ post, isActive, onVisibilityChang
             resizeMode={ResizeMode.COVER}
             isLooping
             shouldPlay={isActive}
-            useNativeControls={true}
+            useNativeControls={false}
             onPlaybackStatusUpdate={(status: any) => {
               if (status.isLoaded) {
                 setIsPlaying(status.isPlaying);

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ViewToken,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +18,10 @@ import PostCard from '../../components/PostCard';
 import VideoReel from '../../components/VideoReel';
 import BottomNavigation from '../../components/BottomNavigation';
 import StoryViewer from '../../components/StoryViewer';
+import ReelViewer from '../../components/ReelViewer';
+import CreateContentModal from '../../components/CreateContentModal';
 import { mockStories, mockPosts } from '../../utils/mockData';
+import { Post } from '../../utils/types';
 
 interface HomeScreenProps {
   navigation?: any;
@@ -27,10 +31,30 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [activeReelId, setActiveReelId] = useState<string | null>(null);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
+  const [showReelViewer, setShowReelViewer] = useState(false);
+  const [selectedReelIndex, setSelectedReelIndex] = useState(0);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Extract only reels from mockPosts
+  const reelsList = useMemo(() => mockPosts.filter(post => post.isReel), []);
+
+  const handleReelPress = (post: Post) => {
+    const reelIndex = reelsList.findIndex(reel => reel.id === post.id);
+    if (reelIndex !== -1) {
+      setSelectedReelIndex(reelIndex);
+      setShowReelViewer(true);
+    }
+  };
 
   const renderFeedItem = ({ item }: { item: any }) => {
     if (item.isReel) {
-      return <VideoReel post={item} isActive={activeReelId === item.id} />;
+      return (
+        <VideoReel 
+          post={item} 
+          isActive={activeReelId === item.id} 
+          onReelPress={handleReelPress}
+        />
+      );
     }
     return <PostCard post={item} />;
   };
@@ -56,6 +80,28 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const handleStoryPress = (index: number) => {
     setSelectedStoryIndex(index);
     setShowStoryViewer(true);
+  };
+
+  const handleCreatePress = () => {
+    setShowCreateModal(true);
+  };
+
+  const handleCreateStory = () => {
+    Alert.alert('Create Story', 'Story creation coming soon!');
+  };
+
+  const handleCreatePost = () => {
+    Alert.alert('Write Article', 'Article creation coming soon!');
+  };
+
+  const handleCreateEvent = () => {
+    if (navigation) {
+      navigation.navigate('CreateEvent');
+    }
+  };
+
+  const handleCreateReel = () => {
+    Alert.alert('Record Reel', 'Reel recording coming soon!');
   };
 
   return (
@@ -121,7 +167,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       />
 
       {/* Bottom Navigation */}
-      <BottomNavigation activeTab="Home" navigation={navigation} />
+      <BottomNavigation 
+        activeTab="Home" 
+        navigation={navigation} 
+        onCreatePress={handleCreatePress}
+      />
 
       {/* Story Viewer */}
       <StoryViewer
@@ -129,6 +179,24 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         stories={mockStories}
         initialIndex={selectedStoryIndex}
         onClose={() => setShowStoryViewer(false)}
+      />
+
+      {/* Reel Viewer */}
+      <ReelViewer
+        visible={showReelViewer}
+        reels={reelsList}
+        initialIndex={selectedReelIndex}
+        onClose={() => setShowReelViewer(false)}
+      />
+
+      {/* Create Content Modal */}
+      <CreateContentModal
+        visible={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreateStory={handleCreateStory}
+        onCreatePost={handleCreatePost}
+        onCreateEvent={handleCreateEvent}
+        onCreateReel={handleCreateReel}
       />
     </SafeAreaView>
   );

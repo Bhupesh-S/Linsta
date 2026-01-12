@@ -1,13 +1,54 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Post } from '../utils/types';
+import CommentsModal from './CommentsModal';
+import ShareModal from './ShareModal';
+import LikeAnimation from './LikeAnimation';
 
 interface PostCardProps {
   post: Post;
 }
 
 const PostCard: React.FC<PostCardProps> = ({ post }) => {
+  const [isLiked, setIsLiked] = useState(false);
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showLikeAnimation, setShowLikeAnimation] = useState(false);
+  const lastTap = useRef<number>(0);
+
+  const handleImageDoubleTap = () => {
+    if (!isLiked) {
+      setIsLiked(true);
+      setShowLikeAnimation(true);
+    }
+  };
+
+  const handleImageTap = () => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+
+    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
+      handleImageDoubleTap();
+    }
+
+    lastTap.current = now;
+  };
+
+  const handleLike = () => {
+    if (!isLiked) {
+      setShowLikeAnimation(true);
+    }
+    setIsLiked(!isLiked);
+  };
+
+  const handleComment = () => {
+    setShowCommentsModal(true);
+  };
+
+  const handleShare = () => {
+    setShowShareModal(true);
+  };
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -45,9 +86,17 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
       {/* Image */}
       {post.image && (
-        <View style={styles.imageContainer}>
+        <TouchableOpacity 
+          style={styles.imageContainer} 
+          activeOpacity={1}
+          onPress={handleImageTap}
+        >
           <Ionicons name={post.image as any} size={100} color="#FFFFFF" />
-        </View>
+          <LikeAnimation 
+            show={showLikeAnimation} 
+            onComplete={() => setShowLikeAnimation(false)}
+          />
+        </TouchableOpacity>
       )}
 
       {/* Engagement Stats */}
@@ -66,19 +115,39 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
       {/* Action Buttons */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionButton} activeOpacity={0.6}>
-          <Ionicons name="heart-outline" size={24} color="#666666" />
+        <TouchableOpacity style={styles.actionButton} activeOpacity={0.6} onPress={handleLike}>
+          <Ionicons 
+            name={isLiked ? 'heart' : 'heart-outline'} 
+            size={24} 
+            color={isLiked ? '#ed4956' : '#666666'} 
+          />
           <Text style={styles.actionText} numberOfLines={1}>Like</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} activeOpacity={0.6}>
+        <TouchableOpacity style={styles.actionButton} activeOpacity={0.6} onPress={handleComment}>
           <Ionicons name="chatbubble-outline" size={24} color="#666666" />
           <Text style={styles.actionText} numberOfLines={1}>Comment</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} activeOpacity={0.6}>
+        <TouchableOpacity style={styles.actionButton} activeOpacity={0.6} onPress={handleShare}>
           <Ionicons name="paper-plane-outline" size={24} color="#666666" />
           <Text style={styles.actionText} numberOfLines={1}>Share</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Comments Modal */}
+      <CommentsModal
+        visible={showCommentsModal}
+        onClose={() => setShowCommentsModal(false)}
+        postId={post.id}
+        commentCount={post.comments}
+      />
+
+      {/* Share Modal */}
+      <ShareModal
+        visible={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        postId={post.id}
+        postTitle={post.content}
+      />
     </View>
   );
 };

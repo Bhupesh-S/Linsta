@@ -19,6 +19,7 @@ import { CommunityCard } from '../components/CommunityCard';
 import { ProfilePreviewModal } from '../components/ProfilePreviewModal';
 import { NetworkUser, SearchFilters } from '../types/network.types';
 import BottomNavigation from '../components/BottomNavigation';
+import CreateContentModal from '../components/CreateContentModal';
 
 type TabType = 'feed' | 'connections' | 'suggestions' | 'requests';
 
@@ -51,6 +52,7 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   const [selectedUser, setSelectedUser] = useState<NetworkUser | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showFirstVisitBanner, setShowFirstVisitBanner] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -92,6 +94,28 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
     } catch (err) {
       Alert.alert('Error', 'Failed to reject request');
     }
+  };
+
+  const handleCreatePress = () => {
+    setShowCreateModal(true);
+  };
+
+  const handleCreateStory = () => {
+    Alert.alert('Create Story', 'Story creation coming soon!');
+  };
+
+  const handleCreatePost = () => {
+    Alert.alert('Write Article', 'Article creation coming soon!');
+  };
+
+  const handleCreateEvent = () => {
+    if (navigation) {
+      navigation.navigate('CreateEvent');
+    }
+  };
+
+  const handleCreateReel = () => {
+    Alert.alert('Record Reel', 'Reel recording coming soon!');
   };
 
   const renderTabContent = () => {
@@ -339,7 +363,21 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
       />
 
       {/* Bottom Navigation */}
-      <BottomNavigation activeTab="Network" navigation={navigation} />
+      <BottomNavigation 
+        activeTab="Network" 
+        navigation={navigation} 
+        onCreatePress={handleCreatePress}
+      />
+
+      {/* Create Content Modal */}
+      <CreateContentModal
+        visible={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreateStory={handleCreateStory}
+        onCreatePost={handleCreatePost}
+        onCreateEvent={handleCreateEvent}
+        onCreateReel={handleCreateReel}
+      />
     </SafeAreaView>
   );
 };

@@ -94,6 +94,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#E1306C',
@@ -125,6 +126,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 3,
     borderColor: '#FFFFFF',
+    overflow: 'hidden',
   },
   storyName: {
     fontSize: 12,

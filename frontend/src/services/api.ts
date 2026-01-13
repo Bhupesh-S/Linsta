@@ -51,16 +51,30 @@ export const testConnection = async (): Promise<string | null> => {
 
 // Get current API URL (with auto-detection on first call)
 let connectionTested = false;
+let connectionPromise: Promise<string> | null = null;
+
 export const getApiUrl = async (): Promise<string> => {
+  // If detection is already in progress, wait for it
+  if (connectionPromise) {
+    await connectionPromise;
+    return API_BASE_URL;
+  }
+
+  // If not tested yet, start detection
   if (!connectionTested) {
     connectionTested = true;
-    const detectedUrl = await testConnection();
-    if (detectedUrl) {
-      API_BASE_URL = detectedUrl;
-      console.log('🎯 Using detected backend URL:', API_BASE_URL);
-    } else {
-      console.log('⚠️ No backend detected, using fallback:', API_BASE_URL);
-    }
+    connectionPromise = (async () => {
+      const detectedUrl = await testConnection();
+      if (detectedUrl) {
+        API_BASE_URL = detectedUrl;
+        console.log('🎯 Using detected backend URL:', API_BASE_URL);
+      } else {
+        console.log('⚠️ No backend detected, using fallback:', API_BASE_URL);
+      }
+      return API_BASE_URL;
+    })();
+    await connectionPromise;
+    connectionPromise = null;
   }
   return API_BASE_URL;
 };

@@ -42,8 +42,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   // Fetch posts and stories on mount
   useEffect(() => {
-    fetchPosts();
-    fetchStories();
+    const initializeFeed = async () => {
+      await fetchPosts();
+      await fetchStories();
+    };
+    initializeFeed();
   }, []);
 
   const fetchPosts = async () => {
@@ -134,11 +137,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const viewabilityConfig = {
     itemVisiblePercentThreshold: 50, // Item must be 50% visible to be considered viewable
-  };
-
-  const handleStoryPress = (index: number) => {
-    setSelectedStoryIndex(index);
-    setShowStoryViewer(true);
   };
 
   return (

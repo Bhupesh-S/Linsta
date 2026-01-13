@@ -22,12 +22,16 @@ import ReelViewer from '../../components/ReelViewer';
 import CreateContentModal from '../../components/CreateContentModal';
 import { mockStories, mockPosts } from '../../utils/mockData';
 import { Post } from '../../utils/types';
+import { useStories } from '../../context/StoryContext';
+import { useArticles } from '../../context/ArticleContext';
 
 interface HomeScreenProps {
   navigation?: any;
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
+  const { userStories, removeExpiredStories } = useStories();
+  const { userArticles } = useArticles();
   const [activeReelId, setActiveReelId] = useState<string | null>(null);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
@@ -35,8 +39,29 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [selectedReelIndex, setSelectedReelIndex] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Extract only reels from mockPosts
-  const reelsList = useMemo(() => mockPosts.filter(post => post.isReel), []);
+  // Remove expired stories on mount
+  React.useEffect(() => {
+    removeExpiredStories();
+  }, []);
+
+  // Combine user stories with mock stories
+  const allStories = useMemo(() => [...mockStories], []);
+
+  // Combine user articles with mock posts and sort by timestamp
+  const allPosts = useMemo(() => {
+    console.log('[HomeScreen] userArticles count:', userArticles.length);
+    console.log('[HomeScreen] userArticles:', userArticles);
+    const combined = [...userArticles, ...mockPosts];
+    // Sort by timestamp (newest first)
+    return combined.sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      return timeB - timeA; // Descending order
+    });
+  }, [userArticles]);
+
+  // Extract only reels from all posts
+  const reelsList = useMemo(() => allPosts.filter(post => post.isReel), [allPosts]);
 
   const handleReelPress = (post: Post) => {
     const reelIndex = reelsList.findIndex(reel => reel.id === post.id);
@@ -87,11 +112,24 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleCreateStory = () => {
-    Alert.alert('Create Story', 'Story creation coming soon!');
+    setShowCreateModal(false);
+    navigation?.navigate('CreateStory');
+  };
+
+  const handleYourStoryPress = () => {
+    if (userStories.length > 0) {
+      // View user's stories
+      setSelectedStoryIndex(-1); // Special index for user stories
+      setShowStoryViewer(true);
+    } else {
+      // Create new story
+      navigation?.navigate('CreateStory');
+    }
   };
 
   const handleCreatePost = () => {
-    Alert.alert('Write Article', 'Article creation coming soon!');
+    setShowCreateModal(false);
+    navigation?.navigate('CreateArticle');
   };
 
   const handleCreateEvent = () => {
@@ -148,11 +186,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       </LinearGradient>
 
       {/* Stories */}
-      <StoryCarousel stories={mockStories} onStoryPress={handleStoryPress} />
+      <StoryCarousel 
+        stories={allStories} 
+        userStories={userStories}
+        onStoryPress={handleStoryPress}
+        onYourStoryPress={handleYourStoryPress}
+      />
 
       {/* Feed with FlatList for smooth scrolling */}
       <FlatList
-        data={mockPosts}
+        data={allPosts}
         renderItem={renderFeedItem}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
@@ -176,8 +219,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       {/* Story Viewer */}
       <StoryViewer
         visible={showStoryViewer}
-        stories={mockStories}
-        initialIndex={selectedStoryIndex}
+        stories={selectedStoryIndex === -1 ? userStories : allStories}
+        initialIndex={selectedStoryIndex === -1 ? 0 : selectedStoryIndex}
         onClose={() => setShowStoryViewer(false)}
       />
 

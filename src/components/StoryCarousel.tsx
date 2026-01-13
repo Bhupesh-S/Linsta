@@ -6,16 +6,28 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Video } from 'expo-av';
 import { Story } from '../utils/types';
 
 interface StoryCarouselProps {
   stories: Story[];
+  userStories?: Story[];
   onStoryPress?: (index: number) => void;
+  onYourStoryPress?: () => void;
 }
 
-const StoryCarousel: React.FC<StoryCarouselProps> = ({ stories, onStoryPress }) => {
+const StoryCarousel: React.FC<StoryCarouselProps> = ({ 
+  stories, 
+  userStories = [],
+  onStoryPress,
+  onYourStoryPress 
+}) => {
+  const hasUserStories = userStories.length > 0;
+  const latestUserStory = hasUserStories ? userStories[0] : null;
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -24,16 +36,36 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({ stories, onStoryPress }) 
         contentContainerStyle={styles.scrollContent}
       >
         {/* Your Story */}
-        <View style={styles.storyItem}>
-          <View style={[styles.storyRing, styles.addStoryRing]}>
+        <TouchableOpacity 
+          style={styles.storyItem}
+          onPress={onYourStoryPress}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.storyRing, hasUserStories && styles.activeStoryRing]}>
             <View style={styles.storyAvatar}>
-              <Ionicons name="add" size={28} color="#0A66C2" />
+              {latestUserStory?.mediaUri ? (
+                latestUserStory.mediaType === 'image' ? (
+                  <Image 
+                    source={{ uri: latestUserStory.mediaUri }} 
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <Ionicons name="videocam" size={28} color="#0A66C2" />
+                )
+              ) : (
+                <Ionicons name="add" size={28} color="#0A66C2" />
+              )}
             </View>
+            {!hasUserStories && (
+              <View style={styles.addIconBadge}>
+                <Ionicons name="add-circle" size={24} color="#0A66C2" />
+              </View>
+            )}
           </View>
           <Text style={styles.storyName} numberOfLines={1} ellipsizeMode="tail">
             Your Story
           </Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Other Stories */}
         {stories.map((story, index) => (
@@ -107,6 +139,14 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  activeStoryRing: {
+    borderColor: '#0A66C2',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0A66C2',
+      },
+    }),
+  },
   addStoryRing: {
     borderColor: '#DBDBDB',
     borderWidth: 2,
@@ -127,6 +167,22 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#FFFFFF',
     overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  addIconBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   storyName: {
     fontSize: 12,

@@ -14,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import BottomNavigation from '../components/BottomNavigation';
 import { MediaPickerService } from '../utils/MediaPickerService';
+import { useArticles } from '../context/ArticleContext';
+import { useUser } from '../context/UserContext';
 
 interface CreateArticleScreenProps {
   navigation?: any;
@@ -28,11 +30,21 @@ interface ArticleData {
 }
 
 const CreateArticleScreen: React.FC<CreateArticleScreenProps> = ({ navigation }) => {
+  const { addArticle } = useArticles();
+  const { userState } = useUser();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [coverImageUri, setCoverImageUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Get current user data from UserContext
+  const currentUser = {
+    id: userState.profile?.id || 'current_user',
+    name: userState.profile?.fullName || 'User',
+    title: userState.profile?.title || '',
+    avatar: 'person-circle',
+  };
 
   const extractTags = (text: string): string[] => {
     const tagRegex = /#[\w]+/g;
@@ -65,30 +77,32 @@ const CreateArticleScreen: React.FC<CreateArticleScreenProps> = ({ navigation })
 
     setIsLoading(true);
 
-    const articleData: ArticleData = {
-      title: title.trim(),
-      content: content.trim(),
-      tags: extractTags(content),
-      coverImageUri: coverImageUri || undefined,
-      isDraft,
-    };
-
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('YOUR_API_ENDPOINT/articles', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${authToken}`,
-      //   },
-      //   body: JSON.stringify(articleData),
-      // });
-      // const result = await response.json();
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Don't save drafts to feed, only published articles
+      if (!isDraft) {
+        console.log('[CreateArticleScreen] Publishing article...');
+        console.log('[CreateArticleScreen] Article data:', {
+          user: currentUser,
+          title: title.trim(),
+          content: content.trim(),
+          coverImage: coverImageUri || undefined,
+        });
+        await addArticle({
+          user: currentUser,
+          title: title.trim(),
+          content: content.trim(),
+          coverImage: coverImageUri || undefined,
+        });
+        console.log('[CreateArticleScreen] Article published successfully');
+      } else {
+        console.log('[CreateArticleScreen] Saving as draft (not added to feed)');
+      }
       
-      console.log('Article data to be sent:', articleData);
+      // Reset form
+      setTitle('');
+      setContent('');
+      setCoverImageUri(null);
+      setTags([]);
       
       Alert.alert(
         'Success', 

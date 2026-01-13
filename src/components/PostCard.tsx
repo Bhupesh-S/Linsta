@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Post } from '../utils/types';
 import CommentsModal from './CommentsModal';
 import ShareModal from './ShareModal';
 import LikeAnimation from './LikeAnimation';
+import { formatRelativeTime } from '../utils/timeUtils';
 
 interface PostCardProps {
   post: Post;
@@ -70,7 +71,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               {post.user.title}
             </Text>
             <Text style={styles.timestamp} numberOfLines={1}>
-              {post.timestamp}
+              {formatRelativeTime(post.timestamp)}
             </Text>
           </View>
         </View>
@@ -79,13 +80,39 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Article Title */}
+      {post.title && (
+        <Text style={styles.articleTitle} numberOfLines={2} ellipsizeMode="tail">
+          {post.title}
+        </Text>
+      )}
+
       {/* Content */}
-      <Text style={styles.content} numberOfLines={10} ellipsizeMode="tail">
+      <Text style={styles.content} numberOfLines={post.title ? 5 : 10} ellipsizeMode="tail">
         {post.content}
       </Text>
 
-      {/* Image */}
-      {post.image && (
+      {/* Cover Image for Articles */}
+      {post.coverImage && (
+        <TouchableOpacity 
+          style={styles.coverImageContainer} 
+          activeOpacity={1}
+          onPress={handleImageTap}
+        >
+          <Image 
+            source={{ uri: post.coverImage }} 
+            style={styles.coverImage}
+            resizeMode="cover"
+          />
+          <LikeAnimation 
+            show={showLikeAnimation} 
+            onComplete={() => setShowLikeAnimation(false)}
+          />
+        </TouchableOpacity>
+      )}
+
+      {/* Image Icon for non-article posts */}
+      {post.image && !post.coverImage && (
         <TouchableOpacity 
           style={styles.imageContainer} 
           activeOpacity={1}
@@ -285,6 +312,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666666',
     fontWeight: '600',
+  },
+  articleTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1D2226',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    lineHeight: 26,
+  },
+  coverImageContainer: {
+    width: '100%',
+    height: 250,
+    backgroundColor: '#F0F0F0',
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
   },
 });
 

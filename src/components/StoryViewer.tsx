@@ -12,6 +12,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatRelativeTime } from '../utils/timeUtils';
 
 const { width, height } = Dimensions.get('screen');
 
@@ -26,6 +27,8 @@ interface Story {
   content?: string;
   backgroundColor?: string;
   imageUri?: any;
+  mediaType?: 'image' | 'video';
+  mediaUri?: string;
 }
 
 interface StoryViewerProps {
@@ -147,12 +150,20 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
           </View>
 
           {/* Story Content - Image or Text */}
-          {currentStory.imageUri ? (
-            <Image
-              source={currentStory.imageUri}
-              style={styles.storyImage}
-              resizeMode="cover"
-            />
+          {currentStory.imageUri || currentStory.mediaUri ? (
+            <>
+              <Image
+                source={currentStory.imageUri || { uri: currentStory.mediaUri }}
+                style={styles.storyImage}
+                resizeMode="cover"
+              />
+              {/* Caption overlay for media stories */}
+              {currentStory.content && (
+                <View style={styles.captionOverlay}>
+                  <Text style={styles.captionText}>{currentStory.content}</Text>
+                </View>
+              )}
+            </>
           ) : currentStory.content ? (
             <View style={styles.contentContainer}>
               <Text style={styles.contentText}>{currentStory.content}</Text>
@@ -160,7 +171,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
           ) : null}
 
           {/* Header with gradient overlay for photos */}
-          {currentStory.imageUri && <View style={styles.headerGradient} />}
+          {(currentStory.imageUri || currentStory.mediaUri) && <View style={styles.headerGradient} />}
           
           <View style={styles.header}>
             <View style={styles.userInfo}>
@@ -174,7 +185,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
                     <Ionicons name="checkmark-circle" size={14} color="#0095f6" />
                   )}
                 </View>
-                <Text style={styles.timestamp}>{currentStory.timestamp}</Text>
+                <Text style={styles.timestamp}>{formatRelativeTime(currentStory.timestamp)}</Text>
               </View>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -447,6 +458,21 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     padding: 4,
+  },
+  captionOverlay: {
+    position: 'absolute',
+    bottom: 120,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  captionText: {
+    fontSize: 16,
+    color: '#fff',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });
 

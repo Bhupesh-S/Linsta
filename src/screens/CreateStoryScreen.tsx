@@ -14,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MediaPickerService, MediaResult } from '../utils/MediaPickerService';
 import BottomNavigation from '../components/BottomNavigation';
+import { useStories } from '../context/StoryContext';
+import { useUser } from '../context/UserContext';
 
 interface CreateStoryScreenProps {
   navigation?: any;
@@ -27,10 +29,20 @@ interface StoryData {
 }
 
 const CreateStoryScreen: React.FC<CreateStoryScreenProps> = ({ navigation }) => {
+  const { addStory } = useStories();
+  const { userState } = useUser();
   const [storyText, setStoryText] = useState('');
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Get current user data from UserContext
+  const currentUser = {
+    id: userState.profile?.id || 'current_user',
+    name: userState.profile?.fullName || 'User',
+    title: userState.profile?.title || '',
+    avatar: 'person-circle',
+  };
 
   const extractHashtags = (text: string): string[] => {
     const hashtagRegex = /#[\w]+/g;
@@ -54,29 +66,20 @@ const CreateStoryScreen: React.FC<CreateStoryScreenProps> = ({ navigation }) => 
 
     setIsLoading(true);
 
-    const storyData: StoryData = {
-      content: storyText.trim(),
-      mediaType: mediaType,
-      mediaUri: mediaUri || undefined,
-      hashtags: extractHashtags(storyText),
-    };
-
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('YOUR_API_ENDPOINT/stories', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${authToken}`,
-      //   },
-      //   body: JSON.stringify(storyData),
-      // });
-      // const result = await response.json();
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Save story to context
+      await addStory({
+        user: currentUser,
+        content: storyText.trim(),
+        mediaType: mediaType || undefined,
+        mediaUri: mediaUri || undefined,
+        backgroundColor: !mediaUri ? '#0A66C2' : undefined, // Default background if no media
+      });
       
-      console.log('Story data to be sent:', storyData);
+      // Reset form
+      setStoryText('');
+      setMediaUri(null);
+      setMediaType(null);
       
       Alert.alert('Success', 'Story posted!', [
         { text: 'OK', onPress: () => navigation?.navigate('Home') }

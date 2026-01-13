@@ -10,6 +10,7 @@ import {
   Platform,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +20,7 @@ import PostCard from '../../components/PostCard';
 import VideoReel from '../../components/VideoReel';
 import BottomNavigation from '../../components/BottomNavigation';
 import StoryViewer from '../../components/StoryViewer';
+import CreateContentModal from '../../components/CreateContentModal';
 import { mockStories, mockPosts } from '../../utils/mockData';
 import { postsApi, Post } from '../../services/posts.api';
 import { storiesApi, UserStories } from '../../services/stories.api';
@@ -31,6 +33,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [activeReelId, setActiveReelId] = useState<string | null>(null);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [stories, setStories] = useState<UserStories[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +80,35 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setRefreshing(true);
     await Promise.all([fetchPosts(), fetchStories()]);
     setRefreshing(false);
+  };
+
+  const handleStoryPress = (index: number) => {
+    setSelectedStoryIndex(index);
+    setShowStoryViewer(true);
+  };
+
+  const handleCreatePress = () => {
+    setShowCreateModal(true);
+  };
+
+  const handleCreateStory = () => {
+    setShowCreateModal(false);
+    navigation?.navigate?.('CreatePost', { mode: 'story' });
+  };
+
+  const handleCreatePost = () => {
+    setShowCreateModal(false);
+    navigation?.navigate?.('CreatePost', { mode: 'post' });
+  };
+
+  const handleCreateEvent = () => {
+    setShowCreateModal(false);
+    navigation?.navigate?.('CreateEvent');
+  };
+
+  const handleCreateReel = () => {
+    setShowCreateModal(false);
+    Alert.alert('Record Reel', 'Reel recording coming soon!');
   };
 
   const renderFeedItem = ({ item }: { item: any }) => {
@@ -206,17 +238,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         />
       )}
 
-      {/* Floating Action Button - Create Post */}
+      {/* Floating Action Button - Create Content */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation?.navigate?.('CreatePost')}
+        onPress={handleCreatePress}
         activeOpacity={0.8}
       >
         <Ionicons name="add" size={28} color="#FFFFFF" />
       </TouchableOpacity>
 
       {/* Bottom Navigation */}
-      <BottomNavigation activeTab="Home" navigation={navigation} />
+      <BottomNavigation 
+        activeTab="Home" 
+        navigation={navigation}
+        onCreatePress={handleCreatePress}
+      />
 
       {/* Story Viewer */}
       <StoryViewer
@@ -224,6 +260,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         stories={stories}
         initialIndex={selectedStoryIndex}
         onClose={() => setShowStoryViewer(false)}
+      />
+
+      {/* Create Content Modal */}
+      <CreateContentModal
+        visible={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreateStory={handleCreateStory}
+        onCreatePost={handleCreatePost}
+        onCreateEvent={handleCreateEvent}
+        onCreateReel={handleCreateReel}
       />
     </SafeAreaView>
   );

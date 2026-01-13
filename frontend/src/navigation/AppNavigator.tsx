@@ -215,7 +215,7 @@ const AppNavigatorInner = () => {
         return <CreateEventScreen navigation={navigation} />;
       
       case 'CreatePost':
-        return <CreatePostScreen navigation={navigation} />;
+        return <CreatePostScreen navigation={navigation} route={{ params: navState.currentParams }} />;
       
       case 'MyTickets':
         return <MyTicketsScreen navigation={navigation} />;

@@ -8,14 +8,15 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Story } from '../utils/types';
+import { UserStories } from '../services/stories.api';
 
 interface StoryCarouselProps {
-  stories: Story[];
+  stories: UserStories[];
   onStoryPress?: (index: number) => void;
+  onAddStory?: () => void;
 }
 
-const StoryCarousel: React.FC<StoryCarouselProps> = ({ stories, onStoryPress }) => {
+const StoryCarousel: React.FC<StoryCarouselProps> = ({ stories, onStoryPress, onAddStory }) => {
   return (
     <View style={styles.container}>
       <ScrollView
@@ -23,8 +24,12 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({ stories, onStoryPress }) 
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Your Story */}
-        <View style={styles.storyItem}>
+        {/* Your Story / Add Story */}
+        <TouchableOpacity 
+          style={styles.storyItem}
+          onPress={onAddStory}
+          activeOpacity={0.7}
+        >
           <View style={[styles.storyRing, styles.addStoryRing]}>
             <View style={styles.storyAvatar}>
               <Ionicons name="add" size={28} color="#0A66C2" />
@@ -33,23 +38,26 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({ stories, onStoryPress }) 
           <Text style={styles.storyName} numberOfLines={1} ellipsizeMode="tail">
             Your Story
           </Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Other Stories */}
-        {stories.map((story, index) => (
+        {stories.map((userStory, index) => (
           <TouchableOpacity
-            key={story.id}
+            key={userStory.user.id}
             style={styles.storyItem}
             onPress={() => onStoryPress?.(index)}
             activeOpacity={0.7}
           >
-            <View style={styles.storyRing}>
+            <View style={[
+              styles.storyRing,
+              userStory.stories.some(s => !s.hasViewed) && styles.unviewedRing
+            ]}>
               <View style={styles.storyAvatar}>
-                <Ionicons name={story.user.avatar as any} size={28} color="#1D2226" />
+                <Ionicons name="person-circle" size={28} color="#1D2226" />
               </View>
             </View>
             <Text style={styles.storyName} numberOfLines={1} ellipsizeMode="tail">
-              {story.user.name.split(' ')[0]}
+              {userStory.user.name.split(' ')[0]}
             </Text>
           </TouchableOpacity>
         ))}
@@ -90,13 +98,13 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     padding: 3,
     borderWidth: 2.5,
-    borderColor: '#E1306C',
+    borderColor: '#CCCCCC',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
     ...Platform.select({
       ios: {
-        shadowColor: '#E1306C',
+        shadowColor: '#999',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 4,
@@ -105,8 +113,17 @@ const styles = StyleSheet.create({
         elevation: 2,
       },
     }),
-  },
-  addStoryRing: {
+  },  unviewedRing: {
+    borderColor: '#E1306C',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#E1306C',
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },  addStoryRing: {
     borderColor: '#DBDBDB',
     borderWidth: 2,
     ...Platform.select({

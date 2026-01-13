@@ -14,12 +14,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { postsApi } from '../../services/posts.api';
+import { storiesApi } from '../../services/stories.api';
 
 interface CreatePostScreenProps {
   navigation?: any;
+  route?: {
+    params?: {
+      mode?: 'post' | 'story';
+    };
+  };
 }
 
-const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation }) => {
+const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, route }) => {
+  const mode = route?.params?.mode || 'post';
+  const isStoryMode = mode === 'story';
   const [caption, setCaption] = useState('');
   const [mediaFiles, setMediaFiles] = useState<{ uri: string; type: 'image' | 'video'; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -28,7 +36,7 @@ const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation }) => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.All,
-        allowsMultipleSelection: true,
+        allowsMultipleSelection: !isStoryMode,
         quality: 0.8,
       });
 
@@ -81,24 +89,48 @@ const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation }) => {
   };
 
   const handleCreatePost = async () => {
-    if (!caption.trim()) {
-      Alert.alert('Error', 'Please enter a caption');
-      return;
+    if (isStoryMode) {
+      // Story requires media
+      if (mediaFiles.length === 0) {
+        Alert.alert('Error', 'Please add a photo or video for your story');
+        return;
+      }
+    } else {
+      // Post requires caption
+      if (!caption.trim()) {
+        Alert.alert('Error', 'Please enter a caption');
+        return;
+      }
     }
 
     setLoading(true);
     try {
-      if (mediaFiles.length > 0) {
-        await postsApi.createPostWithMedia(caption, mediaFiles);
+      if (isStoryMode) {
+        // Create story
+        const mediaFile = mediaFiles[0];
+        await storiesApi.createStoryWithMedia(
+          {
+            uri: mediaFile.uri,
+            type: mediaFile.type === 'image' ? 'image/jpeg' : 'video/mp4',
+            name: mediaFile.name,
+          } as any,
+          caption || undefined
+        );
+        Alert.alert('Success', 'Story created successfully!');
       } else {
-        await postsApi.createPost({ caption });
+        // Create post
+        if (mediaFiles.length > 0) {
+          await postsApi.createPostWithMedia(caption, mediaFiles);
+        } else {
+          await postsApi.createPost({ caption });
+        }
+        Alert.alert('Success', 'Post created successfully!');
       }
       
-      Alert.alert('Success', 'Post created successfully!');
       navigation?.goBack();
     } catch (error: any) {
-      console.error('Create post error:', error);
-      Alert.alert('Error', error.message || 'Failed to create post');
+      console.error(`Create ${isStoryMode ? 'story' : 'post'} error:`, error);
+      Alert.alert('Error', error.message || `Failed to create ${isStoryMode ? 'story' : 'post'}`);
     } finally {
       setLoading(false);
     }
@@ -111,16 +143,19 @@ const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.headerButton}>
           <Ionicons name="close" size={28} color="#1D2226" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Post</Text>
+        <Text style={styles.headerTitle}>{isStoryMode ? 'Create Story' : 'Create Post'}</Text>
         <TouchableOpacity
           onPress={handleCreatePost}
-          style={[styles.postButton, (!caption.trim() || loading) && styles.postButtonDisabled]}
-          disabled={!caption.trim() || loading}
+          style={[
+            styles.postButton,
+            ((isStoryMode ? mediaFiles.length === 0 : !caption.trim()) || loading) && styles.postButtonDisabled
+          ]}
+          disabled={(isStoryMode ? mediaFiles.length === 0 : !caption.trim()) || loading}
         >
           {loading ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.postButtonText}>Post</Text>
+            <Text style={styles.postButtonText}>{isStoryMode ? 'Share' : 'Post'}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -131,13 +166,13 @@ const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation }) => {
           <View style={styles.avatar}>
             <Ionicons name="person-circle" size={48} color="#0A66C2" />
           </View>
-          <Text style={styles.userName}>Share your thoughts...</Text>
+          <Text style={styles.userName}>{isStoryMode ? 'Share a moment...' : 'Share your thoughts...'}</Text>
         </View>
 
         {/* Caption Input */}
         <TextInput
           style={styles.captionInput}
-          placeholder="What do you want to talk about?"
+          placeholder={isStoryMode ? 'Add a caption (optional)...' : 'What do you want to talk about?'}
           placeholderTextColor="#999"
           value={caption}
           onChangeText={setCaption}

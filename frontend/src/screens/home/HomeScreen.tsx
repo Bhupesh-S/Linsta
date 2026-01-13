@@ -21,6 +21,7 @@ import BottomNavigation from '../../components/BottomNavigation';
 import StoryViewer from '../../components/StoryViewer';
 import { mockStories, mockPosts } from '../../utils/mockData';
 import { postsApi, Post } from '../../services/posts.api';
+import { storiesApi, UserStories } from '../../services/stories.api';
 
 interface HomeScreenProps {
   navigation?: any;
@@ -31,12 +32,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [showStoryViewer, setShowStoryViewer] = useState(false);
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [stories, setStories] = useState<UserStories[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingStories, setLoadingStories] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch posts on mount
+  // Fetch posts and stories on mount
   useEffect(() => {
     fetchPosts();
+    fetchStories();
   }, []);
 
   const fetchPosts = async () => {
@@ -54,9 +58,24 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
   };
 
+  const fetchStories = async () => {
+    try {
+      console.log('📱 Fetching stories...');
+      const fetchedStories = await storiesApi.getStories();
+      setStories(fetchedStories);
+      console.log('✅ Stories loaded:', fetchedStories.length);
+    } catch (error) {
+      console.error('❌ Failed to fetch stories:', error);
+      // Use mock data as fallback on error
+      setStories([]);
+    } finally {
+      setLoadingStories(false);
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchPosts();
+    await Promise.all([fetchPosts(), fetchStories()]);
     setRefreshing(false);
   };
 
@@ -134,7 +153,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       </LinearGradient>
 
       {/* Stories */}
-      <StoryCarousel stories={mockStories} onStoryPress={handleStoryPress} />
+      {loadingStories ? (
+        <View style={styles.storiesLoadingContainer}>
+          <ActivityIndicator size="small" color="#0A66C2" />
+        </View>
+      ) : (
+        <StoryCarousel 
+          stories={stories.length > 0 ? stories : []} 
+          onStoryPress={handleStoryPress}
+          onAddStory={() => navigation?.navigate?.('CreatePost', { mode: 'story' })} 
+        />
+      )}
 
       {/* Loading indicator */}
       {loading && (
@@ -192,7 +221,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       {/* Story Viewer */}
       <StoryViewer
         visible={showStoryViewer}
-        stories={mockStories}
+        stories={stories}
         initialIndex={selectedStoryIndex}
         onClose={() => setShowStoryViewer(false)}
       />
@@ -290,6 +319,14 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#666',
+  },
+  storiesLoadingContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 30,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EFEFEF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyContainer: {
     flex: 1,

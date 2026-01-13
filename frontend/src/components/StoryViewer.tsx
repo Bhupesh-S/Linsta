@@ -12,25 +12,13 @@ import {
   StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { UserStories, storiesApi } from '../services/stories.api';
 
 const { width, height } = Dimensions.get('screen');
 
-interface Story {
-  id: string;
-  user: {
-    name: string;
-    avatar: string;
-    verified?: boolean;
-  };
-  timestamp: string;
-  content?: string;
-  backgroundColor?: string;
-  imageUri?: any;
-}
-
 interface StoryViewerProps {
   visible: boolean;
-  stories: Story[];
+  stories: UserStories[];
   initialIndex: number;
   onClose: () => void;
 }
@@ -41,27 +29,41 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   initialIndex,
   onClose,
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [currentUserIndex, setCurrentUserIndex] = useState(initialIndex);
+  const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [progress] = useState(new Animated.Value(0));
   const [isLiked, setIsLiked] = useState(false);
   const [comment, setComment] = useState('');
   const [showCommentInput, setShowCommentInput] = useState(false);
 
-  const currentStory = stories[currentIndex];
-  const STORY_DURATION = 5000; // 5 seconds per story
+  const currentUserStory = stories[currentUserIndex];
+  const currentStory = currentUserStory?.stories[currentStoryIndex];
+  const STORY_DURATION = currentStory?.duration ? currentStory.duration * 1000 : 5000;
 
   useEffect(() => {
     if (visible) {
-      setCurrentIndex(initialIndex);
-      startProgress();
+      setCurrentUserIndex(initialIndex);
+      setCurrentStoryIndex(0);
     }
   }, [visible, initialIndex]);
 
   useEffect(() => {
-    if (visible) {
+    if (visible && currentStory) {
       startProgress();
+      // Mark story as viewed
+      markStoryAsViewed();
     }
-  }, [currentIndex]);
+  }, [currentUserIndex, currentStoryIndex, visible]);
+
+  const markStoryAsViewed = async () => {
+    if (currentStory && !currentStory.hasViewed) {
+      try {
+        await storiesApi.viewStory(currentStory.id);
+      } catch (error) {
+        console.error('Failed to mark story as viewed:', error);
+      }
+    }
+  };
 
   const startProgress = () => {
     progress.setValue(0);
@@ -77,17 +79,34 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   };
 
   const handleNext = () => {
-    if (currentIndex < stories.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+    // Move to next story in current user's stories
+    if (currentStoryIndex < currentUserStory.stories.length - 1) {
+      setCurrentStoryIndex(currentStoryIndex + 1);
       setIsLiked(false);
-    } else {
+    } 
+    // Move to next user's stories
+    else if (currentUserIndex < stories.length - 1) {
+      setCurrentUserIndex(currentUserIndex + 1);
+      setCurrentStoryIndex(0);
+      setIsLiked(false);
+    } 
+    // No more stories, close viewer
+    else {
       onClose();
     }
   };
 
   const handlePrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+    // Move to previous story in current user's stories
+    if (currentStoryIndex > 0) {
+      setCurrentStoryIndex(currentStoryIndex - 1);
+      setIsLiked(false);
+    } 
+    // Move to previous user's stories
+    else if (currentUserIndex > 0) {
+      setCurrentUserIndex(currentUserIndex - 1);
+      const prevUserStories = stories[currentUserIndex - 1];
+      setCurrentStoryIndex(prevUserStories.stories.length - 1);
       setIsLiked(false);
     }
   };
@@ -105,7 +124,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     }
   };
 
-  if (!visible || !currentStory) return null;
+  if (!visible || !currentUserStory || !currentStory) return null;
 
   return (
     <Modal
@@ -124,19 +143,19 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
         >
           {/* Progress Bars */}
           <View style={styles.progressContainer}>
-            {stories.map((_, index) => (
+            {currentUserStory.stories.map((_, index) => (
               <View key={index} style={styles.progressBarBackground}>
                 <Animated.View
                   style={[
                     styles.progressBar,
                     {
                       width:
-                        index === currentIndex
+                        index === currentStoryIndex
                           ? progress.interpolate({
                               inputRange: [0, 1],
                               outputRange: ['0%', '100%'],
                             })
-                          : index < currentIndex
+                          : index < currentStoryIndex
                           ? '100%'
                           : '0%',
                     },
@@ -146,35 +165,34 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             ))}
           </View>
 
-          {/* Story Content - Image or Text */}
-          {currentStory.imageUri ? (
+          {/* Story Content - Image or Video */}
+          {currentStory.mediaType === 'image' && currentStory.mediaUrl ? (
             <Image
-              source={currentStory.imageUri}
+              source={{ uri: currentStory.mediaUrl }}
               style={styles.storyImage}
               resizeMode="cover"
             />
-          ) : currentStory.content ? (
+          ) : currentStory.caption ? (
             <View style={styles.contentContainer}>
-              <Text style={styles.contentText}>{currentStory.content}</Text>
+              <Text style={styles.contentText}>{currentStory.caption}</Text>
             </View>
           ) : null}
 
           {/* Header with gradient overlay for photos */}
-          {currentStory.imageUri && <View style={styles.headerGradient} />}
+          {currentStory.mediaUrl && <View style={styles.headerGradient} />}
           
           <View style={styles.header}>
             <View style={styles.userInfo}>
               <View style={styles.avatarContainer}>
-                <Ionicons name={currentStory.user.avatar as any} size={32} color="#fff" />
+                <Ionicons name="person-circle" size={32} color="#fff" />
               </View>
               <View>
                 <View style={styles.nameRow}>
-                  <Text style={styles.userName}>{currentStory.user.name}</Text>
-                  {currentStory.user.verified && (
-                    <Ionicons name="checkmark-circle" size={14} color="#0095f6" />
-                  )}
+                  <Text style={styles.userName}>{currentUserStory.user.name}</Text>
                 </View>
-                <Text style={styles.timestamp}>{currentStory.timestamp}</Text>
+                <Text style={styles.timestamp}>
+                  {new Date(currentStory.timestamp).toLocaleDateString()}
+                </Text>
               </View>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -183,13 +201,13 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
           </View>
 
           {/* Navigation Arrows */}
-          {currentIndex > 0 && (
+          {(currentUserIndex > 0 || currentStoryIndex > 0) && (
             <TouchableOpacity style={styles.navArrowLeft} onPress={handlePrevious}>
               <Ionicons name="chevron-back" size={32} color="#fff" />
             </TouchableOpacity>
           )}
           
-          {currentIndex < stories.length - 1 && (
+          {(currentUserIndex < stories.length - 1 || currentStoryIndex < currentUserStory.stories.length - 1) && (
             <TouchableOpacity style={styles.navArrowRight} onPress={handleNext}>
               <Ionicons name="chevron-forward" size={32} color="#fff" />
             </TouchableOpacity>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,116 +7,108 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Image
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-
-interface ExperienceItem {
-  id: string;
-  company: string;
-  role: string;
-  duration: string;
-  description?: string;
-}
-
-interface EducationItem {
-  id: string;
-  institution: string;
-  degree: string;
-  duration: string;
-}
+import { useAuth } from '../../context/AuthContext';
+import { profileApi, UserProfileResponse } from '../../services/profile.api';
 
 interface Props { navigation?: any }
 
 const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { colors } = useTheme();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [profileData, setProfileData] = useState<UserProfileResponse | null>(null);
 
-  // Basic Info
-  const [name, setName] = useState('John Doe');
-  const [headline, setHeadline] = useState('Software Engineer @ Acme');
-  const [location, setLocation] = useState('Bengaluru, India');
-  const [about, setAbout] = useState('Passionate engineer building delightful mobile experiences. Previously at FooCorp.');
-  const [email, setEmail] = useState('john.doe@example.com');
-  const [phone, setPhone] = useState('+91 98765 43210');
+  // Form fields
+  const [university, setUniversity] = useState('');
+  const [course, setCourse] = useState('');
+  const [year, setYear] = useState('');
+  const [skillsInput, setSkillsInput] = useState('');
+  const [interestsInput, setInterestsInput] = useState('');
 
-  // Social Links
-  const [linkedin, setLinkedin] = useState('linkedin.com/in/johndoe');
-  const [github, setGithub] = useState('github.com/johndoe');
-  const [twitter, setTwitter] = useState('@johndoe');
-  const [website, setWebsite] = useState('johndoe.dev');
+  useEffect(() => {
+    fetchProfile();
+  }, []);
 
-  // Experience
-  const [experiences, setExperiences] = useState<ExperienceItem[]>([
-    { id: '1', company: 'Acme Inc.', role: 'Senior Engineer', duration: '2023 – Present', description: 'Leading the mobile platform.' },
-    { id: '2', company: 'FooCorp', role: 'Engineer', duration: '2020 – 2023', description: 'Shipped multiple consumer apps.' },
-  ]);
-
-  // Education
-  const [education, setEducation] = useState<EducationItem[]>([
-    { id: '1', institution: 'IIT Example', degree: 'B.Tech, CSE', duration: '2016 – 2020' },
-  ]);
-
-  // Skills
-  const [skills, setSkills] = useState<string[]>(['React Native', 'TypeScript', 'Node.js', 'UI/UX']);
-  const [newSkill, setNewSkill] = useState('');
-
-  const onSave = () => {
-    Alert.alert('Success', 'Profile updated successfully!');
-    navigation?.goBack?.();
-  };
-
-  const addExperience = () => {
-    const newExp: ExperienceItem = {
-      id: Date.now().toString(),
-      company: '',
-      role: '',
-      duration: '',
-      description: '',
-    };
-    setExperiences([...experiences, newExp]);
-  };
-
-  const removeExperience = (id: string) => {
-    setExperiences(experiences.filter(exp => exp.id !== id));
-  };
-
-  const updateExperience = (id: string, field: keyof ExperienceItem, value: string) => {
-    setExperiences(experiences.map(exp =>
-      exp.id === id ? { ...exp, [field]: value } : exp
-    ));
-  };
-
-  const addEducation = () => {
-    const newEdu: EducationItem = {
-      id: Date.now().toString(),
-      institution: '',
-      degree: '',
-      duration: '',
-    };
-    setEducation([...education, newEdu]);
-  };
-
-  const removeEducation = (id: string) => {
-    setEducation(education.filter(edu => edu.id !== id));
-  };
-
-  const updateEducation = (id: string, field: keyof EducationItem, value: string) => {
-    setEducation(education.map(edu =>
-      edu.id === id ? { ...edu, [field]: value } : edu
-    ));
-  };
-
-  const addSkill = () => {
-    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
-      setSkills([...skills, newSkill.trim()]);
-      setNewSkill('');
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const data = await profileApi.getProfile();
+      setProfileData(data);
+      // Initialize form with current data
+      setUniversity(data.profile?.university || '');
+      setCourse(data.profile?.course || '');
+      setYear(data.profile?.year || '');
+      setSkillsInput(data.profile?.skills?.join(', ') || '');
+      setInterestsInput(data.profile?.interests?.join(', ') || '');
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+      Alert.alert('Error', 'Failed to load profile data');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const removeSkill = (skill: string) => {
-    setSkills(skills.filter(s => s !== skill));
+  const onSave = async () => {
+    try {
+      setSaving(true);
+      
+      // Convert comma-separated strings to arrays
+      const skills = skillsInput
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+      
+      const interests = interestsInput
+        .split(',')
+        .map(i => i.trim())
+        .filter(i => i.length > 0);
+
+      await profileApi.updateProfile({
+        university: university.trim() || undefined,
+        course: course.trim() || undefined,
+        year: year.trim() || undefined,
+        skills,
+        interests,
+      });
+
+      Alert.alert('Success', 'Profile updated successfully!');
+      navigation?.goBack?.();
+    } catch (error: any) {
+      console.error('Failed to update profile:', error);
+      Alert.alert('Error', error.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.headerBar, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation?.goBack?.()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={[styles.title, { color: colors.text }]}>Edit Profile</Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading profile...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -135,323 +127,74 @@ const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
         <TouchableOpacity
           style={styles.saveButton}
           onPress={onSave}
+          disabled={saving}
           activeOpacity={0.7}
         >
-          <Ionicons name="checkmark" size={24} color={colors.primary} />
+          {saving ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <Ionicons name="checkmark" size={24} color={colors.primary} />
+          )}
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Profile Photo Section */}
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Profile Photo</Text>
-          <View style={styles.photoContainer}>
-            <View style={[styles.photoPlaceholder, { backgroundColor: colors.primary }]}>
-              <Text style={styles.photoInitials}>JD</Text>
-            </View>
-            <View style={styles.photoActions}>
-              <TouchableOpacity
-                style={[styles.photoButton, { backgroundColor: colors.primary }]}
-                onPress={() => Alert.alert('Upload Photo', 'Photo upload functionality')}
-              >
-                <Ionicons name="camera" size={20} color="#fff" />
-                <Text style={styles.photoButtonText}>Change Photo</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.photoButtonSecondary, { borderColor: colors.border }]}
-                onPress={() => Alert.alert('Remove Photo', 'Photo removed')}
-              >
-                <Ionicons name="trash-outline" size={20} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* Basic Information */}
+        {/* User Info (Read-only) */}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            <Ionicons name="person-outline" size={18} color={colors.text} /> Basic Information
+            <Ionicons name="person-outline" size={18} color={colors.text} /> Account Information
           </Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Full Name *</Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-              placeholderTextColor={colors.textSecondary}
-              placeholder="Enter your full name"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Headline *</Text>
-            <TextInput
-              value={headline}
-              onChangeText={setHeadline}
-              style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-              placeholderTextColor={colors.textSecondary}
-              placeholder="e.g., Software Engineer @ Company"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Location</Text>
-            <View style={[styles.inputWithIcon, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Ionicons name="location-outline" size={20} color={colors.textSecondary} />
-              <TextInput
-                value={location}
-                onChangeText={setLocation}
-                style={[styles.inputField, { color: colors.text }]}
-                placeholderTextColor={colors.textSecondary}
-                placeholder="City, Country"
-              />
+          <View style={[styles.infoCard, { backgroundColor: colors.background }]}>
+            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+              <Text style={styles.avatarText}>
+                {user?.name?.charAt(0).toUpperCase() || 'U'}
+              </Text>
+            </View>
+            <View style={styles.userDetails}>
+              <Text style={[styles.userName, { color: colors.text }]}>{user?.name}</Text>
+              <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user?.email}</Text>
             </View>
           </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Email</Text>
-            <View style={[styles.inputWithIcon, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Ionicons name="mail-outline" size={20} color={colors.textSecondary} />
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                style={[styles.inputField, { color: colors.text }]}
-                placeholderTextColor={colors.textSecondary}
-                placeholder="your.email@example.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Phone</Text>
-            <View style={[styles.inputWithIcon, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Ionicons name="call-outline" size={20} color={colors.textSecondary} />
-              <TextInput
-                value={phone}
-                onChangeText={setPhone}
-                style={[styles.inputField, { color: colors.text }]}
-                placeholderTextColor={colors.textSecondary}
-                placeholder="+91 98765 43210"
-                keyboardType="phone-pad"
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* About Section */}
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            <Ionicons name="document-text-outline" size={18} color={colors.text} /> About
-          </Text>
-          <TextInput
-            value={about}
-            onChangeText={setAbout}
-            style={[styles.textarea, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-            placeholderTextColor={colors.textSecondary}
-            placeholder="Tell us about yourself..."
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
-          />
-          <Text style={[styles.charCount, { color: colors.textSecondary }]}>
-            {about.length} characters
-          </Text>
-        </View>
-
-        {/* Social Links */}
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            <Ionicons name="link-outline" size={18} color={colors.text} /> Social Links
-          </Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>LinkedIn</Text>
-            <View style={[styles.inputWithIcon, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Ionicons name="logo-linkedin" size={20} color="#0077b5" />
-              <TextInput
-                value={linkedin}
-                onChangeText={setLinkedin}
-                style={[styles.inputField, { color: colors.text }]}
-                placeholderTextColor={colors.textSecondary}
-                placeholder="linkedin.com/in/username"
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>GitHub</Text>
-            <View style={[styles.inputWithIcon, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Ionicons name="logo-github" size={20} color={colors.text} />
-              <TextInput
-                value={github}
-                onChangeText={setGithub}
-                style={[styles.inputField, { color: colors.text }]}
-                placeholderTextColor={colors.textSecondary}
-                placeholder="github.com/username"
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Twitter</Text>
-            <View style={[styles.inputWithIcon, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Ionicons name="logo-twitter" size={20} color="#1da1f2" />
-              <TextInput
-                value={twitter}
-                onChangeText={setTwitter}
-                style={[styles.inputField, { color: colors.text }]}
-                placeholderTextColor={colors.textSecondary}
-                placeholder="@username"
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Website</Text>
-            <View style={[styles.inputWithIcon, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Ionicons name="globe-outline" size={20} color={colors.textSecondary} />
-              <TextInput
-                value={website}
-                onChangeText={setWebsite}
-                style={[styles.inputField, { color: colors.text }]}
-                placeholderTextColor={colors.textSecondary}
-                placeholder="yourwebsite.com"
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Experience Section */}
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              <Ionicons name="briefcase-outline" size={18} color={colors.text} /> Experience
-            </Text>
-            <TouchableOpacity onPress={addExperience} style={styles.addButton}>
-              <Ionicons name="add-circle" size={24} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
-
-          {experiences.map((exp, index) => (
-            <View key={exp.id} style={[styles.itemCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <View style={styles.itemHeader}>
-                <Text style={[styles.itemNumber, { color: colors.textSecondary }]}>#{index + 1}</Text>
-                <TouchableOpacity onPress={() => removeExperience(exp.id)}>
-                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Company</Text>
-                <TextInput
-                  value={exp.company}
-                  onChangeText={(text) => updateExperience(exp.id, 'company', text)}
-                  style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                  placeholderTextColor={colors.textSecondary}
-                  placeholder="Company name"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Role</Text>
-                <TextInput
-                  value={exp.role}
-                  onChangeText={(text) => updateExperience(exp.id, 'role', text)}
-                  style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                  placeholderTextColor={colors.textSecondary}
-                  placeholder="Your role"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Duration</Text>
-                <TextInput
-                  value={exp.duration}
-                  onChangeText={(text) => updateExperience(exp.id, 'duration', text)}
-                  style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                  placeholderTextColor={colors.textSecondary}
-                  placeholder="e.g., 2020 - Present"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Description</Text>
-                <TextInput
-                  value={exp.description}
-                  onChangeText={(text) => updateExperience(exp.id, 'description', text)}
-                  style={[styles.textareaSmall, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                  placeholderTextColor={colors.textSecondary}
-                  placeholder="Brief description of your role..."
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                />
-              </View>
-            </View>
-          ))}
         </View>
 
         {/* Education Section */}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              <Ionicons name="school-outline" size={18} color={colors.text} /> Education
-            </Text>
-            <TouchableOpacity onPress={addEducation} style={styles.addButton}>
-              <Ionicons name="add-circle" size={24} color={colors.primary} />
-            </TouchableOpacity>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            <Ionicons name="school-outline" size={18} color={colors.text} /> Education
+          </Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>University</Text>
+            <TextInput
+              value={university}
+              onChangeText={setUniversity}
+              style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+              placeholderTextColor={colors.textSecondary}
+              placeholder="Enter your university"
+            />
           </View>
 
-          {education.map((edu, index) => (
-            <View key={edu.id} style={[styles.itemCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <View style={styles.itemHeader}>
-                <Text style={[styles.itemNumber, { color: colors.textSecondary }]}>#{index + 1}</Text>
-                <TouchableOpacity onPress={() => removeEducation(edu.id)}>
-                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                </TouchableOpacity>
-              </View>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Course</Text>
+            <TextInput
+              value={course}
+              onChangeText={setCourse}
+              style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+              placeholderTextColor={colors.textSecondary}
+              placeholder="e.g., Computer Science"
+            />
+          </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Institution</Text>
-                <TextInput
-                  value={edu.institution}
-                  onChangeText={(text) => updateEducation(edu.id, 'institution', text)}
-                  style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                  placeholderTextColor={colors.textSecondary}
-                  placeholder="University/College name"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Degree</Text>
-                <TextInput
-                  value={edu.degree}
-                  onChangeText={(text) => updateEducation(edu.id, 'degree', text)}
-                  style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                  placeholderTextColor={colors.textSecondary}
-                  placeholder="e.g., B.Tech, Computer Science"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Duration</Text>
-                <TextInput
-                  value={edu.duration}
-                  onChangeText={(text) => updateEducation(edu.id, 'duration', text)}
-                  style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                  placeholderTextColor={colors.textSecondary}
-                  placeholder="e.g., 2016 - 2020"
-                />
-              </View>
-            </View>
-          ))}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Year</Text>
+            <TextInput
+              value={year}
+              onChangeText={setYear}
+              style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+              placeholderTextColor={colors.textSecondary}
+              placeholder="e.g., 2nd Year, Final Year"
+            />
+          </View>
         </View>
 
         {/* Skills Section */}
@@ -459,43 +202,58 @@ const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             <Ionicons name="bulb-outline" size={18} color={colors.text} /> Skills
           </Text>
+          <TextInput
+            value={skillsInput}
+            onChangeText={setSkillsInput}
+            style={[styles.textarea, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+            placeholderTextColor={colors.textSecondary}
+            placeholder="Enter your skills (comma separated)&#10;e.g., React Native, TypeScript, Node.js"
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
+          <Text style={[styles.hint, { color: colors.textSecondary }]}>
+            Separate skills with commas
+          </Text>
+        </View>
 
-          <View style={styles.skillsInput}>
-            <TextInput
-              value={newSkill}
-              onChangeText={setNewSkill}
-              style={[styles.input, { flex: 1, backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-              placeholderTextColor={colors.textSecondary}
-              placeholder="Add a skill..."
-              onSubmitEditing={addSkill}
-            />
-            <TouchableOpacity
-              style={[styles.addSkillButton, { backgroundColor: colors.primary }]}
-              onPress={addSkill}
-            >
-              <Ionicons name="add" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.skillsContainer}>
-            {skills.map((skill, index) => (
-              <View key={index} style={[styles.skillChip, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                <Text style={[styles.skillText, { color: colors.text }]}>{skill}</Text>
-                <TouchableOpacity onPress={() => removeSkill(skill)}>
-                  <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
+        {/* Interests Section */}
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            <Ionicons name="heart-outline" size={18} color={colors.text} /> Interests
+          </Text>
+          <TextInput
+            value={interestsInput}
+            onChangeText={setInterestsInput}
+            style={[styles.textarea, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+            placeholderTextColor={colors.textSecondary}
+            placeholder="Enter your interests (comma separated)&#10;e.g., Photography, Travel, Gaming"
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
+          <Text style={[styles.hint, { color: colors.textSecondary }]}>
+            Separate interests with commas
+          </Text>
         </View>
 
         {/* Save Button */}
         <TouchableOpacity
           onPress={onSave}
-          style={[styles.saveButtonLarge, { backgroundColor: colors.primary }]}
+          disabled={saving}
+          style={[
+            styles.saveButtonLarge, 
+            { backgroundColor: saving ? colors.textSecondary : colors.primary }
+          ]}
         >
-          <Ionicons name="checkmark-circle" size={24} color="#fff" />
-          <Text style={styles.saveButtonText}>Save Changes</Text>
+          {saving ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle" size={24} color="#fff" />
+              <Text style={styles.saveButtonText}>Save Changes</Text>
+            </>
+          )}
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />
@@ -530,6 +288,17 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     padding: 8,
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
   },
   scrollContent: {
     padding: 16,
@@ -544,57 +313,40 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 16,
   },
-  photoContainer: {
+  infoCard: {
+    flexDirection: 'row',
     alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
     gap: 16,
   },
-  photoPlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  photoInitials: {
-    fontSize: 48,
-    fontWeight: '700',
+  avatarText: {
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#fff',
   },
-  photoActions: {
-    flexDirection: 'row',
-    gap: 12,
+  userDetails: {
+    flex: 1,
   },
-  photoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    gap: 8,
-  },
-  photoButtonText: {
-    color: '#fff',
-    fontSize: 15,
+  userName: {
+    fontSize: 18,
     fontWeight: '600',
+    marginBottom: 4,
   },
-  photoButtonSecondary: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  userEmail: {
+    fontSize: 14,
   },
   inputGroup: {
     marginBottom: 16,
@@ -610,86 +362,17 @@ const styles = StyleSheet.create({
     padding: 14,
     fontSize: 15,
   },
-  inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    gap: 10,
-  },
-  inputField: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 15,
-  },
   textarea: {
     borderWidth: 1,
     borderRadius: 10,
     padding: 14,
-    minHeight: 120,
+    minHeight: 100,
     fontSize: 15,
   },
-  textareaSmall: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 14,
-    minHeight: 80,
-    fontSize: 15,
-  },
-  charCount: {
+  hint: {
     fontSize: 12,
     marginTop: 6,
-    textAlign: 'right',
-  },
-  addButton: {
-    padding: 4,
-  },
-  itemCard: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  itemNumber: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  skillsInput: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-  },
-  addSkillButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  skillsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  skillChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 8,
-  },
-  skillText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontStyle: 'italic',
   },
   saveButtonLarge: {
     flexDirection: 'row',

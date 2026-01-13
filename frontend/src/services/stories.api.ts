@@ -132,7 +132,7 @@ export const storiesApi = {
 
   // Create story with media upload
   createStoryWithMedia: async (
-    mediaFile: any,
+    mediaFile: { uri: string; type: string; name: string },
     caption?: string,
     backgroundColor?: string,
     duration?: number
@@ -143,10 +143,18 @@ export const storiesApi = {
       const token = await AsyncStorage.getItem('token');
       const formData = new FormData();
       
-      formData.append('media', mediaFile);
+      // Add media file with proper format for React Native
+      formData.append('media', {
+        uri: mediaFile.uri,
+        type: mediaFile.type,
+        name: mediaFile.name,
+      } as any);
+      
       if (caption) formData.append('caption', caption);
       if (backgroundColor) formData.append('backgroundColor', backgroundColor);
       if (duration) formData.append('duration', duration.toString());
+
+      console.log('📤 Uploading story media:', mediaFile.name);
 
       const response = await fetch(`${apiUrl}/api/stories/upload`, {
         method: 'POST',

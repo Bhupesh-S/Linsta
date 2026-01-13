@@ -35,7 +35,7 @@ const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, route }
   const pickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        mediaTypes: ['images', 'videos'],
         allowsMultipleSelection: !isStoryMode,
         quality: 0.8,
       });
@@ -63,7 +63,7 @@ const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, route }
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         quality: 0.8,
       });
 

@@ -1,74 +1,118 @@
   // Authentication business logic
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import jwt, { SignOptions } from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import { User } from "../users/user.model";
 import { UserProfile } from "../users/profile.model";
 import { RegisterRequest, LoginRequest, GoogleLoginRequest, AuthResponse, JwtPayload } from "./auth.types";
+import { validateEmail, validatePassword, validateName } from "./auth.validators";
+import { AuthErrors, AuthError } from "./auth.errors";
+import { config } from "../../config/config";
 
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
-const JWT_EXPIRY = "7d";
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+// Ensure JWT secret is set and non-empty
+const JWT_SECRET = config.jwtSecret || "supersecretkey";
+const JWT_EXPIRY: string = (config.jwtExpiry as string) || "7d";
+const GOOGLE_CLIENT_ID = config.googleClientId || "";
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 export class AuthService {
   // Register new user (email/password)
   static async register(data: RegisterRequest): Promise<AuthResponse> {
-    // Check if user exists
-    const existingUser = await User.findOne({ email: data.email });
-    if (existingUser) {
-      throw new Error("User already exists");
+    // Validate inputs
+    if (!data.name || !data.email || !data.password) {
+      throw AuthErrors.MISSING_FIELDS;
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+    // Validate name
+    const nameValidation = validateName(data.name);
+    if (!nameValidation.valid) {
+      throw new AuthError(400, nameValidation.error || "Invalid name");
+    }
 
-    // Create user
-    const user = await User.create({
-      name: data.name,
-      email: data.email,
-      password: hashedPassword,
-      authProvider: "local",
-    });
+    // Validate email
+    if (!validateEmail(data.email)) {
+      throw AuthErrors.INVALID_EMAIL;
+    }
 
-    // Create empty profile
-    await UserProfile.create({
-      userId: user._id,
-      skills: [],
-      interests: [],
-    });
+    // Validate password strength
+    const passwordValidation = validatePassword(data.password);
+    if (!passwordValidation.valid) {
+      throw new AuthError(400, `Password requirements: ${passwordValidation.errors.join(", ")}`);
+    }
 
-    // Generate token
-    const token = this.generateToken(user._id.toString(), user.email);
+    // Check if user exists
+    const existingUser = await User.findOne({ email: data.email.toLowerCase() });
+    if (existingUser) {
+      throw AuthErrors.USER_EXISTS;
+    }
 
-    return {
-      token,
-      user: {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-      },
-    };
+    try {
+      // Hash password
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+
+      // Create user
+      const user = await User.create({
+        name: data.name.trim(),
+        email: data.email.toLowerCase(),
+        password: hashedPassword,
+        authProvider: "local",
+      });
+
+      // Create empty profile
+      await UserProfile.create({
+        userId: user._id,
+        skills: [],
+        interests: [],
+      });
+
+      // Generate token
+      const token = this.generateToken(user._id.toString(), user.email);
+
+      return {
+        token,
+        user: {
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+        },
+      };
+    } catch (error: any) {
+      // Handle duplicate email error from MongoDB
+      if (error.code === 11000) {
+        throw AuthErrors.USER_EXISTS;
+      }
+      throw error;
+    }
   }
 
   // Login user (email/password)
   static async login(data: LoginRequest): Promise<AuthResponse> {
+    // Validate inputs
+    if (!data.email || !data.password) {
+      throw AuthErrors.MISSING_FIELDS;
+    }
+
+    // Validate email format
+    if (!validateEmail(data.email)) {
+      throw AuthErrors.INVALID_EMAIL;
+    }
+
     // Find user
-    const user = await User.findOne({ email: data.email });
+    const user = await User.findOne({ email: data.email.toLowerCase() });
     if (!user) {
-      throw new Error("Invalid credentials");
+      throw AuthErrors.INVALID_CREDENTIALS;
     }
 
     // Verify password exists
     if (!user.password) {
-      throw new Error("This account uses Google login. Please use Google Sign-In.");
+      throw AuthErrors.GOOGLE_LOGIN_REQUIRED;
     }
 
     // Verify password
     const isValidPassword = await bcrypt.compare(data.password, user.password);
     if (!isValidPassword) {
-      throw new Error("Invalid credentials");
+      throw AuthErrors.INVALID_CREDENTIALS;
     }
 
     // Generate token
@@ -105,7 +149,7 @@ export class AuthService {
       const name = mockPayload.name;
 
       if (!email || !name) {
-        throw new Error("Missing email or name from Google");
+        throw AuthErrors.MISSING_FIELDS;
       }
 
       // Check if user exists by email
@@ -148,23 +192,34 @@ export class AuthService {
         },
       };
     } catch (error: any) {
-      throw new Error(`Google authentication failed: ${error.message}`);
+      if (error instanceof AuthError) {
+        throw error;
+      }
+      throw new AuthError(401, `Google authentication failed: ${error.message}`);
     }
   }
 
   // Generate JWT token
   private static generateToken(userId: string, email: string): string {
     const payload: JwtPayload = { userId, email };
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+    return jwt.sign(payload, JWT_SECRET, { 
+      expiresIn: "7d"
+    });
   }
 
-  // Verify token
+  // Verify token with proper error handling
   static verifyToken(token: string): JwtPayload {
     try {
       const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
       return decoded;
-    } catch (error) {
-      throw new Error("Invalid or expired token");
+    } catch (error: any) {
+      if (error.name === "TokenExpiredError") {
+        throw new AuthError(401, "Token has expired. Please log in again.");
+      }
+      if (error.name === "JsonWebTokenError") {
+        throw new AuthError(401, "Invalid token format");
+      }
+      throw AuthErrors.INVALID_TOKEN;
     }
   }
 }

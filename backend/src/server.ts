@@ -1,14 +1,14 @@
 // Server startup
-import dotenv from "dotenv";
 import http from "http";
 import app from "./app";
 import { connectDB } from "./config/db";
 import { initializeSocket } from "./socket/socket";
+import { config, validateConfig } from "./config/config";
 
-// Load environment variables
-dotenv.config();
+// Validate critical environment variables
+validateConfig();
 
-const PORT = process.env.PORT || 5000;
+const PORT = config.port;
 
 const startServer = async (): Promise<void> => {
   try {

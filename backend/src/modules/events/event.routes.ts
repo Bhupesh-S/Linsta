@@ -12,6 +12,8 @@ router.get("/:id/attendees", EventController.getEventAttendees);
 
 // Protected routes
 router.post("/", authMiddleware, EventController.createEvent);
+router.put("/:id", authMiddleware, EventController.updateEvent);
+router.delete("/:id", authMiddleware, EventController.deleteEvent);
 router.post("/:id/rsvp", authMiddleware, EventController.registerForEvent);
 router.delete("/:id/rsvp", authMiddleware, EventController.cancelRsvp);
 

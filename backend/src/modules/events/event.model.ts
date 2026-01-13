@@ -10,8 +10,10 @@ export interface IEvent extends Document {
   venue?: string;
   isOnline: boolean;
   meetingLink?: string;
+  maxCapacity?: number;
   createdBy: Types.ObjectId;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const eventSchema = new Schema<IEvent>({
@@ -45,12 +47,19 @@ const eventSchema = new Schema<IEvent>({
   meetingLink: {
     type: String,
   },
+  maxCapacity: {
+    type: Number,
+  },
   createdBy: {
     type: Schema.Types.ObjectId,
     ref: "User",
     required: true,
   },
   createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
     type: Date,
     default: Date.now,
   },

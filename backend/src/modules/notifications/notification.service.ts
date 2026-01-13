@@ -14,16 +14,16 @@ export const setSocketIO = (socketIO: SocketIOServer): void => {
 export class NotificationService {
   /**
    * Create a notification
-   * Don't notify if user performs action on their own content
+   * IMPORTANT: Don't notify if user performs action on their own content
    */
   async createNotification(
     receiverId: string,
     actorId: string,
-    type: 'LIKE' | 'COMMENT' | 'EVENT_RSVP',
+    type: 'LIKE' | 'COMMENT' | 'EVENT_RSVP' | 'STORY_VIEW' | 'STORY_LIKE' | 'STORY_COMMENT',
     message: string,
     referenceId: string
   ): Promise<void> {
-    // Don't notify user of their own actions
+    // RULE #1: Do not notify user for their own actions
     if (receiverId === actorId) {
       return;
     }
@@ -31,6 +31,7 @@ export class NotificationService {
     try {
       const notification = await Notification.create({
         userId: new mongoose.Types.ObjectId(receiverId),
+        actorId: new mongoose.Types.ObjectId(actorId),
         type,
         message,
         referenceId: new mongoose.Types.ObjectId(referenceId),
@@ -42,6 +43,7 @@ export class NotificationService {
         emitNotificationToUser(io, receiverId, {
           _id: notification._id,
           userId: notification.userId,
+          actorId: notification.actorId,
           type: notification.type,
           message: notification.message,
           referenceId: notification.referenceId,
@@ -57,7 +59,8 @@ export class NotificationService {
 
   /**
    * Get all notifications for a user
-   * Latest first, with pagination
+   * RULE #3: Sort by latest first
+   * Includes pagination
    */
   async getNotifications(
     userId: string,
@@ -75,20 +78,57 @@ export class NotificationService {
     return notifications.map((notif) => ({
       _id: notif._id.toString(),
       userId: notif.userId.toString(),
+      actorId: notif.actorId.toString(),
       type: notif.type,
       message: notif.message,
       referenceId: notif.referenceId.toString(),
       isRead: notif.isRead,
       createdAt: notif.createdAt.toISOString(),
+      updatedAt: notif.updatedAt.toISOString(),
+    }));
+  }
+
+  /**
+   * Get only unread notifications
+   * RULE #3: Sort by latest first
+   */
+  async getUnreadNotifications(
+    userId: string,
+    limit: number = 20,
+    skip: number = 0
+  ): Promise<NotificationResponse[]> {
+    const notifications = await Notification.find({
+      userId: new mongoose.Types.ObjectId(userId),
+      isRead: false,
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .skip(skip)
+      .lean();
+
+    return notifications.map((notif) => ({
+      _id: notif._id.toString(),
+      userId: notif.userId.toString(),
+      actorId: notif.actorId.toString(),
+      type: notif.type,
+      message: notif.message,
+      referenceId: notif.referenceId.toString(),
+      isRead: notif.isRead,
+      createdAt: notif.createdAt.toISOString(),
+      updatedAt: notif.updatedAt.toISOString(),
     }));
   }
 
   /**
    * Mark notification as read
+   * RULE #2: Ensure isRead flag works correctly
    */
-  async markAsRead(notificationId: string): Promise<NotificationResponse | null> {
-    const notification = await Notification.findByIdAndUpdate(
-      notificationId,
+  async markAsRead(notificationId: string, userId: string): Promise<NotificationResponse | null> {
+    const notification = await Notification.findOneAndUpdate(
+      {
+        _id: new mongoose.Types.ObjectId(notificationId),
+        userId: new mongoose.Types.ObjectId(userId),
+      },
       { isRead: true },
       { new: true }
     ).lean();
@@ -100,16 +140,19 @@ export class NotificationService {
     return {
       _id: notification._id.toString(),
       userId: notification.userId.toString(),
+      actorId: notification.actorId.toString(),
       type: notification.type,
       message: notification.message,
       referenceId: notification.referenceId.toString(),
       isRead: notification.isRead,
       createdAt: notification.createdAt.toISOString(),
+      updatedAt: notification.updatedAt.toISOString(),
     };
   }
 
   /**
    * Get unread count for user
+   * RULE #2: Ensure isRead flag works correctly
    */
   async getUnreadCount(userId: string): Promise<number> {
     return Notification.countDocuments({
@@ -119,16 +162,85 @@ export class NotificationService {
   }
 
   /**
+   * RULE #4: Bulk mark-as-read option
    * Mark all notifications as read for a user
    */
-  async markAllAsRead(userId: string): Promise<void> {
-    await Notification.updateMany(
+  async markAllAsRead(userId: string): Promise<{ modifiedCount: number }> {
+    const result = await Notification.updateMany(
       {
         userId: new mongoose.Types.ObjectId(userId),
         isRead: false,
       },
       { isRead: true }
     );
+
+    return {
+      modifiedCount: result.modifiedCount,
+    };
+  }
+
+  /**
+   * RULE #4: Bulk mark multiple notifications as read
+   */
+  async markMultipleAsRead(notificationIds: string[], userId: string): Promise<{ modifiedCount: number }> {
+    const objectIds = notificationIds.map((id) => new mongoose.Types.ObjectId(id));
+
+    const result = await Notification.updateMany(
+      {
+        _id: { $in: objectIds },
+        userId: new mongoose.Types.ObjectId(userId),
+        isRead: false,
+      },
+      { isRead: true }
+    );
+
+    return {
+      modifiedCount: result.modifiedCount,
+    };
+  }
+
+  /**
+   * RULE #5: Clean old notifications if needed
+   * Manually clean notifications older than specified days
+   */
+  async deleteOldNotifications(olderThanDays: number = 90): Promise<{ deletedCount: number }> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+
+    const result = await Notification.deleteMany({
+      createdAt: { $lt: cutoffDate },
+    });
+
+    return {
+      deletedCount: result.deletedCount,
+    };
+  }
+
+  /**
+   * Get notification by ID
+   * Verify user is the receiver
+   */
+  async getNotificationById(notificationId: string, userId: string): Promise<NotificationResponse | null> {
+    const notification = await Notification.findOne({
+      _id: new mongoose.Types.ObjectId(notificationId),
+      userId: new mongoose.Types.ObjectId(userId),
+    }).lean();
+
+    if (!notification) {
+      return null;
+    }
+
+    return {
+      _id: notification._id.toString(),
+      userId: notification.userId.toString(),
+      actorId: notification.actorId.toString(),
+      type: notification.type,
+      message: notification.message,
+      referenceId: notification.referenceId.toString(),
+      isRead: notification.isRead,
+      createdAt: notification.createdAt.toISOString(),
+      updatedAt: notification.updatedAt.toISOString(),
+    };
   }
 }
 

@@ -5,19 +5,47 @@ import { Like, ILike } from "./like.model";
 import { Comment, IComment } from "./comment.model";
 import { Types } from "mongoose";
 import { CreatePostRequest, PostResponse, CommentResponse } from "./post.types";
-import notificationService from "../notifications/notification.service";
-import analyticsService from "../analytics/analytics.service";
+import { PostErrors } from "./post.errors";
+import { validatePostInput, validateCommentText } from "./post.validators";
+
+// Import services safely with fallback
+let notificationService: any;
+let analyticsService: any;
+
+try {
+  notificationService = require("../notifications/notification.service").default;
+} catch (e) {
+  console.warn("Notification service not available");
+  notificationService = { createNotification: async () => {} };
+}
+
+try {
+  analyticsService = require("../analytics/analytics.service").default;
+} catch (e) {
+  console.warn("Analytics service not available");
+  analyticsService = {
+    trackPostLike: async () => {},
+    trackPostComment: async () => {},
+    logUserActivity: async () => {},
+  };
+}
 
 export class PostService {
-  // Create a new post with optional media
+  // Create a new post with validation
   static async createPost(
     data: CreatePostRequest,
     userId: string
   ): Promise<PostResponse> {
+    // Validate caption
+    const validation = validatePostInput(data);
+    if (!validation.valid) {
+      throw PostErrors.INVALID_INPUT;
+    }
+
     // Create post
     const post = await Post.create({
       authorId: new Types.ObjectId(userId),
-      caption: data.caption,
+      caption: data.caption.trim(),
       eventId: data.eventId ? new Types.ObjectId(data.eventId) : undefined,
     });
 
@@ -35,14 +63,14 @@ export class PostService {
     return this.getPostById(post._id.toString(), userId);
   }
 
-  // Get feed with latest posts (with optional search and filters)
+  // Get feed with latest posts (with pagination, search, and filters)
   static async getFeed(
     userId: string,
     limit: number = 20,
     skip: number = 0,
     search?: string,
     eventId?: string
-  ): Promise<PostResponse[]> {
+  ): Promise<{ posts: PostResponse[]; total: number; limit: number; skip: number; hasMore: boolean }> {
     // Build query object
     const query: any = {};
 
@@ -55,6 +83,9 @@ export class PostService {
     if (eventId && eventId.trim()) {
       query.eventId = new Types.ObjectId(eventId);
     }
+
+    // Get total count for pagination metadata
+    const total = await Post.countDocuments(query);
 
     const posts = await Post.find(query)
       .populate("authorId", "name email")
@@ -104,7 +135,13 @@ export class PostService {
       })
     );
 
-    return postsWithCounts;
+    return {
+      posts: postsWithCounts,
+      total,
+      limit,
+      skip,
+      hasMore: skip + limit < total,
+    };
   }
 
   // Get single post by ID
@@ -114,7 +151,7 @@ export class PostService {
       .populate("eventId", "title");
 
     if (!post) {
-      throw new Error("Post not found");
+      throw PostErrors.NOT_FOUND;
     }
 
     const media = await PostMedia.find({ postId: new Types.ObjectId(postId) });
@@ -156,12 +193,12 @@ export class PostService {
     };
   }
 
-  // Like a post
+  // Like a post - prevent duplicates with standardized errors
   static async likePost(postId: string, userId: string): Promise<{ success: boolean; message: string }> {
     // Verify post exists
     const post = await Post.findById(postId);
     if (!post) {
-      throw new Error("Post not found");
+      throw PostErrors.NOT_FOUND;
     }
 
     // Check if already liked
@@ -171,7 +208,7 @@ export class PostService {
     });
 
     if (existingLike) {
-      throw new Error("Post already liked by this user");
+      throw PostErrors.ALREADY_LIKED;
     }
 
     // Create like
@@ -181,24 +218,27 @@ export class PostService {
     });
 
     // Track post like analytics asynchronously
-    analyticsService.trackPostLike(postId).catch((err) => {
+    analyticsService.trackPostLike(postId).catch((err: any) => {
       console.error("Failed to track post like:", err);
     });
 
     // Log user activity
-    analyticsService.logUserActivity(userId, "LIKE_POST", postId).catch((err) => {
+    analyticsService.logUserActivity(userId, "LIKE_POST", postId).catch((err: any) => {
       console.error("Failed to log like activity:", err);
     });
 
     // Notify post author (if not the liker)
     const author = post.authorId.toString();
     if (author !== userId) {
-      const authorName = await this.getAuthorName(author);
+      const User = require("../users/user.model").default;
+      const user = await User.findById(userId).select("name");
+      const userName = user?.name || "Someone";
+
       await notificationService.createNotification(
         author,
         userId,
-        'LIKE',
-        `${authorName} liked your post`,
+        "LIKE",
+        `${userName} liked your post`,
         postId
       );
     }
@@ -214,37 +254,43 @@ export class PostService {
     });
 
     if (result.deletedCount === 0) {
-      throw new Error("Like not found");
+      throw PostErrors.NOT_LIKED;
     }
 
     return { success: true, message: "Like removed successfully" };
   }
 
-  // Add comment to post
+  // Add comment to post with validation
   static async addComment(postId: string, userId: string, text: string): Promise<CommentResponse> {
     // Verify post exists
     const post = await Post.findById(postId);
     if (!post) {
-      throw new Error("Post not found");
+      throw PostErrors.NOT_FOUND;
+    }
+
+    // Validate comment text
+    const validation = validateCommentText(text);
+    if (!validation.valid) {
+      throw PostErrors.INVALID_INPUT;
     }
 
     // Create comment
     const comment = await Comment.create({
       postId: new Types.ObjectId(postId),
       userId: new Types.ObjectId(userId),
-      text,
+      text: text.trim(),
     });
 
     // Populate user info
     const populatedComment = await comment.populate("userId", "name email");
 
     // Track post comment analytics asynchronously
-    analyticsService.trackPostComment(postId).catch((err) => {
+    analyticsService.trackPostComment(postId).catch((err: any) => {
       console.error("Failed to track post comment:", err);
     });
 
     // Log user activity
-    analyticsService.logUserActivity(userId, "COMMENT_POST", postId).catch((err) => {
+    analyticsService.logUserActivity(userId, "COMMENT_POST", postId).catch((err: any) => {
       console.error("Failed to log comment activity:", err);
     });
 
@@ -255,7 +301,7 @@ export class PostService {
       await notificationService.createNotification(
         author,
         userId,
-        'COMMENT',
+        "COMMENT",
         `${commenterName} commented on your post`,
         postId
       );
@@ -277,13 +323,16 @@ export class PostService {
     };
   }
 
-  // Get all comments for a post
-  static async getComments(postId: string, limit: number = 20, skip: number = 0): Promise<CommentResponse[]> {
+  // Get all comments for a post with pagination
+  static async getComments(postId: string, limit: number = 20, skip: number = 0): Promise<{ comments: CommentResponse[]; total: number; limit: number; skip: number; hasMore: boolean }> {
     // Verify post exists
     const post = await Post.findById(postId);
     if (!post) {
-      throw new Error("Post not found");
+      throw PostErrors.NOT_FOUND;
     }
+
+    // Get total count
+    const total = await Comment.countDocuments({ postId: new Types.ObjectId(postId) });
 
     const comments = await Comment.find({ postId: new Types.ObjectId(postId) })
       .populate("userId", "name email")
@@ -291,7 +340,7 @@ export class PostService {
       .limit(limit)
       .skip(skip);
 
-    return comments.map((comment) => ({
+    const mappedComments = comments.map((comment) => ({
       _id: comment._id.toString(),
       postId: comment.postId.toString(),
       userId: comment.userId.toString(),
@@ -305,18 +354,26 @@ export class PostService {
         : undefined,
       createdAt: comment.createdAt,
     }));
+
+    return {
+      comments: mappedComments,
+      total,
+      limit,
+      skip,
+      hasMore: skip + limit < total,
+    };
   }
 
-  // Delete comment
+  // Delete comment - ensure only owner can delete
   static async deleteComment(commentId: string, userId: string): Promise<{ success: boolean; message: string }> {
     const comment = await Comment.findById(commentId);
     if (!comment) {
-      throw new Error("Comment not found");
+      throw PostErrors.COMMENT_NOT_FOUND;
     }
 
     // Verify user is comment author
     if (comment.userId.toString() !== userId) {
-      throw new Error("Unauthorized: Can only delete own comments");
+      throw PostErrors.CANNOT_DELETE_COMMENT;
     }
 
     await Comment.deleteOne({ _id: commentId });
@@ -324,23 +381,25 @@ export class PostService {
     return { success: true, message: "Comment deleted successfully" };
   }
 
-  // Delete post
+  // Delete post - ensure only owner can delete + cleanup likes/comments
   static async deletePost(postId: string, userId: string): Promise<{ success: boolean; message: string }> {
     const post = await Post.findById(postId);
     if (!post) {
-      throw new Error("Post not found");
+      throw PostErrors.NOT_FOUND;
     }
 
     // Verify user is post author
     if (post.authorId.toString() !== userId) {
-      throw new Error("Unauthorized: Can only delete own posts");
+      throw PostErrors.CANNOT_DELETE_POST;
     }
 
-    // Delete post and all related data
-    await Post.deleteOne({ _id: postId });
-    await PostMedia.deleteMany({ postId: new Types.ObjectId(postId) });
-    await Like.deleteMany({ postId: new Types.ObjectId(postId) });
-    await Comment.deleteMany({ postId: new Types.ObjectId(postId) });
+    // Delete post and all related data (likes, comments, media)
+    await Promise.all([
+      Post.deleteOne({ _id: postId }),
+      PostMedia.deleteMany({ postId: new Types.ObjectId(postId) }),
+      Like.deleteMany({ postId: new Types.ObjectId(postId) }),
+      Comment.deleteMany({ postId: new Types.ObjectId(postId) }),
+    ]);
 
     return { success: true, message: "Post deleted successfully" };
   }

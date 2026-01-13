@@ -9,12 +9,18 @@ import postRoutes from "./modules/posts/post.routes";
 import notificationRoutes from "./modules/notifications/notification.routes";
 import chatRoutes from "./modules/chat/chat.routes";
 import analyticsRoutes from "./modules/analytics/analytics.routes";
+import storyRoutes from "./modules/stories/story.routes";
+import { requestLogger } from "./middlewares/requestLogger.middleware";
+import { errorHandler, notFoundHandler } from "./middlewares/errorHandler.middleware";
 
 const app: Express = express();
 
-// Middleware
+// Global Middleware
 app.use(express.json());
 app.use(cors());
+
+// Request logging
+app.use(requestLogger);
 
 // Routes
 app.use("/", healthRoutes);
@@ -22,8 +28,13 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/posts", postRoutes);
+app.use("/api/stories", storyRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/analytics", analyticsRoutes);
+
+// Error handling
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;

@@ -69,28 +69,31 @@ const CreateArticleScreen: React.FC<CreateArticleScreenProps> = ({ navigation })
     setIsLoading(true);
 
     try {
-      // Extract hashtags from title and content
-      const detectedTags = extractTags(content);
-      
-      // Format article as a post caption with title and content
-      const articleCaption = `📝 ${title}\n\n${content}`;
-      
-      console.log('📝 Publishing article to backend...');
-      
-      if (coverImageUri) {
-        // Upload article with cover image
-        const mediaFiles = [{
-          uri: coverImageUri,
-          type: 'image' as const,
-          name: 'article_cover.jpg'
-        }];
+      // Don't save drafts to feed, only published articles
+      if (!isDraft) {
+        // Extract hashtags from title and content
+        const detectedTags = extractTags(content);
         
-        await postsApi.createPostWithMedia(articleCaption, mediaFiles);
-        console.log('✅ Article with image published successfully');
-      } else {
-        // Upload article without image
-        await postsApi.createPost({ caption: articleCaption });
-        console.log('✅ Article published successfully');
+        // Format article as a post caption with title and content
+        const articleCaption = `📝 ${title}\n\n${content}`;
+        
+        console.log('📝 Publishing article to backend...');
+        
+        if (coverImageUri) {
+          // Upload article with cover image
+          const mediaFiles = [{
+            uri: coverImageUri,
+            type: 'image' as const,
+            name: 'article_cover.jpg'
+          }];
+          
+          await postsApi.createPostWithMedia(articleCaption, mediaFiles);
+          console.log('✅ Article with image published successfully');
+        } else {
+          // Upload article without image
+          await postsApi.createPost({ caption: articleCaption });
+          console.log('✅ Article published successfully');
+        }
       }
       
       // Reset form

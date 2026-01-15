@@ -12,11 +12,22 @@ import { UserStories } from '../services/stories.api';
 
 interface StoryCarouselProps {
   stories: UserStories[];
+  userStories?: any[];
   onStoryPress?: (index: number) => void;
   onAddStory?: () => void;
+  onYourStoryPress?: () => void;
 }
 
-const StoryCarousel: React.FC<StoryCarouselProps> = ({ stories, onStoryPress, onAddStory }) => {
+const StoryCarousel: React.FC<StoryCarouselProps> = ({ 
+  stories, 
+  userStories = [],
+  onStoryPress, 
+  onAddStory,
+  onYourStoryPress 
+}) => {
+  const hasUserStories = userStories.length > 0;
+  const latestUserStory = hasUserStories ? userStories[userStories.length - 1] : null;
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -34,6 +45,11 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({ stories, onStoryPress, on
             <View style={styles.storyAvatar}>
               <Ionicons name="add" size={28} color="#0A66C2" />
             </View>
+            {!hasUserStories && (
+              <View style={styles.addIconBadge}>
+                <Ionicons name="add" size={20} color="#FFFFFF" />
+              </View>
+            )}
           </View>
           <Text style={styles.storyName} numberOfLines={1} ellipsizeMode="tail">
             Your Story
@@ -69,30 +85,21 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({ stories, onStoryPress, on
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#EFEFEF',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
+    borderBottomColor: '#DBDBDB',
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 16,
   },
   storyItem: {
     alignItems: 'center',
-    width: 76,
+    width: 80,
   },
   storyRing: {
+<<<<<<< HEAD:frontend/src/components/StoryCarousel.tsx
     width: 72,
     height: 72,
     borderRadius: 36,
@@ -124,33 +131,67 @@ const styles = StyleSheet.create({
       },
     }),
   },  addStoryRing: {
+=======
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    padding: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    position: 'relative',
+    borderWidth: 2,
+    borderColor: '#DBDBDB',
+  },
+  activeStoryRing: {
+    borderWidth: 3,
+    borderColor: '#FF6B35', // Red-orange color similar to Instagram
+  },
+  addStoryRing: {
+>>>>>>> origin/frontend:src/components/StoryCarousel.tsx
     borderColor: '#DBDBDB',
     borderWidth: 2,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-      },
-    }),
   },
   storyAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#F8F9FA',
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: '#FAFAFA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+<<<<<<< HEAD:frontend/src/components/StoryCarousel.tsx
+=======
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  addIconBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#0A66C2',
+    borderRadius: 14,
+    width: 28,
+    height: 28,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
     borderColor: '#FFFFFF',
+>>>>>>> origin/frontend:src/components/StoryCarousel.tsx
   },
   storyName: {
     fontSize: 12,
-    color: '#1D2226',
-    marginTop: 2,
+    color: '#262626',
+    marginTop: 6,
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '400',
+    maxWidth: 80,
   },
 });
 
 export default StoryCarousel;
-

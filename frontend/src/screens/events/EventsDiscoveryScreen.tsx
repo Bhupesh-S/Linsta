@@ -17,12 +17,14 @@ import BottomNavigation from '../../components/BottomNavigation';
 import CreateContentModal from '../../components/CreateContentModal';
 import { mockEvents } from '../../utils/eventMockData';
 import { Event, EventCategory } from '../../utils/eventTypes';
+import { useEvents } from '../../context/EventContext';
 
 interface EventsDiscoveryScreenProps {
   navigation?: any;
 }
 
 const EventsDiscoveryScreen: React.FC<EventsDiscoveryScreenProps> = ({ navigation }) => {
+  const { userEvents } = useEvents();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
@@ -31,9 +33,40 @@ const EventsDiscoveryScreen: React.FC<EventsDiscoveryScreenProps> = ({ navigatio
   const categories: EventCategory[] = ['Academic', 'Cultural', 'Sports', 'Networking', 'Workshops'];
   const locations = ['Online', 'San Francisco', 'New York', 'Los Angeles', 'Chicago'];
 
+  // Combine user events with mock events
+  const allEvents = useMemo(() => {
+    // Convert UserEvent to Event format for display
+    const convertedUserEvents = userEvents.map(event => ({
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      shortDescription: event.description.substring(0, 100),
+      category: event.category || 'Networking' as EventCategory,
+      date: event.startDate || new Date().toISOString(),
+      time: event.startTime || '00:00',
+      endTime: event.endTime,
+      location: event.isOnline ? 'Online' : (event.venueAddress || 'TBD'),
+      locationType: (event.isOnline ? 'Online' : 'In-Person') as LocationType,
+      host: {
+        id: 'user',
+        name: 'You',
+        verified: false,
+      },
+      bannerColor: '#0A66C2',
+      bannerIcon: 'calendar',
+      attendeeCount: event.attendeeCount || 0,
+      maxAttendees: event.capacity,
+      imageUrl: event.coverImageUri,
+      ticketType: event.ticketType || 'Free',
+      hasRSVPd: event.hasRSVPd || false,
+    }));
+
+    return [...convertedUserEvents, ...mockEvents];
+  }, [userEvents]);
+
   // Filter events based on search and filters
   const filteredEvents = useMemo(() => {
-    return mockEvents.filter((event) => {
+    return allEvents.filter((event) => {
       const matchesSearch = searchQuery === '' || 
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -45,7 +78,7 @@ const EventsDiscoveryScreen: React.FC<EventsDiscoveryScreenProps> = ({ navigatio
 
       return matchesSearch && matchesCategory && matchesLocation;
     });
-  }, [searchQuery, selectedCategory, selectedLocation]);
+  }, [allEvents, searchQuery, selectedCategory, selectedLocation]);
 
   const handleEventPress = (event: Event) => {
     // Navigate to event detail screen

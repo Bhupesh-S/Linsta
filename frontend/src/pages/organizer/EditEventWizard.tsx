@@ -95,7 +95,7 @@ const EditEventWizard: React.FC = () => {
   const renderStep = () => {
     switch (currentStepKey) {
       case 'basic':
-        return <BasicInfoStep value={data} onChange={onChange} errors={errors} />;
+        return <BasicInfoStep value={data} onChange={onChange} errors={errors} onNext={onNext} onPrevious={onBack} currentStep={index} totalSteps={steps.length} />;
       case 'datetime':
         return <DateTimeStep value={data} onChange={onChange} errors={errors} />;
       case 'location':

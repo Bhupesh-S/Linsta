@@ -16,6 +16,8 @@ import {
   CommunitiesResponse,
   CommunityActionResponse,
   PermissionsResponse,
+  FollowResponse,
+  BlockResponse,
   SearchFilters,
   ConnectRequest as ConnectReq,
   ConnectionResponse as ConnResp,
@@ -52,7 +54,7 @@ let mockUsers: NetworkUser[] = [
     organization: 'TechConf',
     skills: ['Event Planning', 'Marketing', 'Community Building'],
     avatarUrl: undefined,
-    connectionStatus: 'requested',
+    connectionStatus: 'pending',
     location: 'San Francisco, CA',
     bio: 'Tech Event Organizer',
   },
@@ -118,17 +120,94 @@ let mockCommunities: Community[] = [
 let mockRequests: ConnectionRequest[] = [
   {
     id: 'r1',
-    user: mockUsers[2],
+    user: {
+      id: '101',
+      name: 'Priya Sharma',
+      role: 'student',
+      organization: 'IIT Bombay',
+      skills: ['React', 'Node.js', 'MongoDB'],
+      connectionStatus: 'none',
+      location: 'Mumbai, India',
+      bio: 'Full Stack Developer',
+    },
     timestamp: '2024-01-15T10:30:00Z',
-    message: 'Would love to connect!',
+    message: 'Hi! I saw your profile and would love to connect!',
+  },
+  {
+    id: 'r2',
+    user: {
+      id: '102',
+      name: 'Rahul Singh',
+      role: 'faculty',
+      organization: 'IIT Delhi',
+      skills: ['AI', 'Machine Learning', 'Python'],
+      connectionStatus: 'none',
+      location: 'Delhi, India',
+      bio: 'AI Research Professor',
+    },
+    timestamp: '2024-01-14T15:20:00Z',
+    message: 'Looking forward to connecting with you!',
+  },
+  {
+    id: 'r3',
+    user: {
+      id: '103',
+      name: 'Ananya Patel',
+      role: 'organizer',
+      organization: 'TechSummit India',
+      skills: ['Event Management', 'Marketing', 'Networking'],
+      connectionStatus: 'none',
+      location: 'Bangalore, India',
+      bio: 'Tech Event Organizer',
+    },
+    timestamp: '2024-01-14T09:45:00Z',
+    message: 'Would love to collaborate on upcoming tech events!',
+  },
+  {
+    id: 'r4',
+    user: {
+      id: '104',
+      name: 'Vikram Mehta',
+      role: 'student',
+      organization: 'BITS Pilani',
+      skills: ['Flutter', 'Dart', 'Firebase'],
+      connectionStatus: 'none',
+      location: 'Pilani, India',
+      bio: 'Mobile App Developer',
+    },
+    timestamp: '2024-01-13T18:10:00Z',
+    message: 'Hey! Let\'s connect and share knowledge!',
+  },
+  {
+    id: 'r5',
+    user: {
+      id: '105',
+      name: 'Sneha Reddy',
+      role: 'faculty',
+      organization: 'NIT Trichy',
+      skills: ['Data Science', 'Analytics', 'R'],
+      connectionStatus: 'none',
+      location: 'Trichy, India',
+      bio: 'Data Science Professor',
+    },
+    timestamp: '2024-01-13T12:30:00Z',
+    message: 'Interested in your work. Let\'s connect!',
   },
 ];
 
-const mockStats: NetworkStats = {
-  connectionsCount: 234,
-  followersCount: 567,
-  pendingRequestsCount: 3,
-};
+// Track followers count separately
+let followersCount = 0;
+
+// Track sent connection requests (userId -> targetUserId[])
+// This tracks who the current user has sent requests to
+let sentRequests: Set<string> = new Set();
+
+// Track accepted connections from current user's side (userId -> Set of userIds)
+// When user accepts someone's request, add them here
+let acceptedFromMe: Set<string> = new Set();
+
+// Track mutual connections (both users accepted each other)
+let mutualConnections: Set<string> = new Set();
 
 // Simulate network delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -184,7 +263,9 @@ export class MockNetworkAPI implements NetworkAPI {
     
     const user = mockUsers.find(u => u.id === request.userId);
     if (user) {
-      user.connectionStatus = 'requested';
+      user.connectionStatus = 'pending';
+      // Track that we sent a request to this user
+      sentRequests.add(request.userId);
     }
     
     return {
@@ -200,7 +281,39 @@ export class MockNetworkAPI implements NetworkAPI {
     if (response.action === 'accept') {
       const request = mockRequests.find(r => r.id === response.requestId);
       if (request) {
-        request.user.connectionStatus = 'connected';
+        const requesterId = request.user.id;
+        
+        // Mark that we accepted this user's request
+        acceptedFromMe.add(requesterId);
+        
+        // Check if this is a mutual connection
+        // Mutual = They sent us a request (which we're accepting) AND we also sent them a request
+        const isMutual = sentRequests.has(requesterId);
+        
+        if (isMutual) {
+          // Both users accepted each other - this is a mutual connection
+          request.user.connectionStatus = 'connected';
+          mutualConnections.add(requesterId);
+        } else {
+          // Only one-way acceptance - they become a follower but not a connection
+          request.user.connectionStatus = 'none'; // Keep as none until mutual
+        }
+        
+        // Add to mockUsers if not already there
+        const existingUser = mockUsers.find(u => u.id === requesterId);
+        if (!existingUser) {
+          mockUsers.push({ 
+            ...request.user, 
+            connectionStatus: isMutual ? 'connected' : 'none' 
+          });
+        } else {
+          existingUser.connectionStatus = isMutual ? 'connected' : 'none';
+        }
+        
+        // Increment followers count when accepting a request
+        followersCount++;
+        
+        // Remove from requests
         mockRequests = mockRequests.filter(r => r.id !== response.requestId);
       }
       return {
@@ -222,6 +335,18 @@ export class MockNetworkAPI implements NetworkAPI {
     const user = mockUsers.find(u => u.id === userId);
     if (user) {
       user.connectionStatus = 'none';
+      
+      // Remove from mutual connections if exists
+      mutualConnections.delete(userId);
+      
+      // Remove from tracking sets
+      acceptedFromMe.delete(userId);
+      sentRequests.delete(userId);
+      
+      // Decrement followers count when removing a connection
+      if (followersCount > 0) {
+        followersCount--;
+      }
     }
     
     return {
@@ -298,9 +423,87 @@ export class MockNetworkAPI implements NetworkAPI {
     };
   }
 
+  async followUser(userId: string): Promise<FollowResponse> {
+    await delay(400);
+    
+    const user = mockUsers.find(u => u.id === userId);
+    if (user) {
+      // Update follow status
+      if (user.followStatus === 'followed_by') {
+        user.followStatus = 'mutual';
+      } else {
+        user.followStatus = 'following';
+      }
+    }
+    
+    return {
+      success: true,
+      message: 'User followed successfully',
+    };
+  }
+
+  async unfollowUser(userId: string): Promise<FollowResponse> {
+    await delay(400);
+    
+    const user = mockUsers.find(u => u.id === userId);
+    if (user) {
+      // Update follow status
+      if (user.followStatus === 'mutual') {
+        user.followStatus = 'followed_by';
+      } else {
+        user.followStatus = 'not_following';
+      }
+    }
+    
+    return {
+      success: true,
+      message: 'User unfollowed successfully',
+    };
+  }
+
+  async blockUser(userId: string): Promise<BlockResponse> {
+    await delay(400);
+    
+    const user = mockUsers.find(u => u.id === userId);
+    if (user) {
+      user.connectionStatus = 'blocked';
+      user.followStatus = 'not_following';
+    }
+    
+    return {
+      success: true,
+      message: 'User blocked successfully',
+    };
+  }
+
+  async unblockUser(userId: string): Promise<BlockResponse> {
+    await delay(400);
+    
+    const user = mockUsers.find(u => u.id === userId);
+    if (user) {
+      user.connectionStatus = 'none';
+    }
+    
+    return {
+      success: true,
+      message: 'User unblocked successfully',
+    };
+  }
+
   async getNetworkStats() {
     await delay(300);
-    return mockStats;
+    
+    // Calculate real counts from data
+    // Connections = only mutual connections (both users accepted each other)
+    const connectionsCount = mutualConnections.size;
+    const pendingRequestsCount = mockRequests.length;
+    
+    return {
+      connectionsCount,
+      followersCount, // Use the tracked followers count
+      followingCount: 123, // Keep this static for now
+      pendingRequestsCount,
+    };
   }
 }
 

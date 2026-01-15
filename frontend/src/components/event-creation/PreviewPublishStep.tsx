@@ -1,14 +1,20 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { EventFormData } from '../../utils/eventFormTypes';
 
 interface Props {
   value: EventFormData;
+  onPrevious?: () => void;
+  onPublish?: () => void;
+  isPublishing?: boolean;
+  currentStep?: number;
+  totalSteps?: number;
 }
 
-const PreviewPublishStep: React.FC<Props> = ({ value }) => {
+const PreviewPublishStep: React.FC<Props> = ({ value, onPrevious, onPublish, isPublishing = false, currentStep = 0, totalSteps = 5 }) => {
   const { colors } = useTheme();
+  const isFirstStep = currentStep === 0;
 
   return (
     <View>
@@ -35,6 +41,47 @@ const PreviewPublishStep: React.FC<Props> = ({ value }) => {
           </Text>
         </View>
       </View>
+
+      {/* Navigation Buttons - Previous and Publish on last step */}
+      {(onPrevious || onPublish) && (
+        <View style={styles.navigationContainer}>
+          {onPrevious && (
+            <TouchableOpacity
+              style={[
+                styles.navButton,
+                { 
+                  backgroundColor: isFirstStep ? colors.border : colors.card, 
+                  borderColor: colors.border,
+                  opacity: isFirstStep ? 0.5 : 1
+                }
+              ]}
+              onPress={onPrevious}
+              disabled={isFirstStep || isPublishing}
+            >
+              <Text style={{ color: isFirstStep ? colors.textSecondary : colors.text, fontWeight: '600' }}>Previous</Text>
+            </TouchableOpacity>
+          )}
+          
+          {onPublish && (
+            <TouchableOpacity
+              style={[
+                styles.publishButton,
+                { 
+                  backgroundColor: colors.primary,
+                  borderColor: colors.primary,
+                  opacity: isPublishing ? 0.7 : 1
+                }
+              ]}
+              onPress={onPublish}
+              disabled={isPublishing}
+            >
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>
+                {isPublishing ? 'Publishing...' : 'Publish Event'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
     </View>
   );
 };
@@ -44,6 +91,27 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 12, overflow: 'hidden' },
   cover: { width: '100%', height: 160 },
   eventTitle: { fontWeight: '700', fontSize: 16, marginBottom: 4 },
+  navigationContainer: {
+    marginTop: 20,
+    gap: 12,
+  },
+  navButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  publishButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
 });
 
 export default PreviewPublishStep;

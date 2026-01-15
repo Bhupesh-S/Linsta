@@ -27,11 +27,13 @@ import RegistrationSuccessScreen from '../pages/rsvp/RegistrationSuccessScreen';
 import EditEventScreen from '../pages/organizer/EditEventScreen';
 import ProfileScreen from '../pages/profile/ProfileScreen';
 import EditProfileScreen from '../pages/profile/EditProfileScreen';
+import UserProfileScreen from '../screens/common/UserProfileScreen';
+import { UserProfileDetailScreen } from '../screens/network/UserProfileDetailScreen';
 
 import ConnectionsScreen from '../pages/network/ConnectionsScreen';
 import CommunitiesScreen from '../pages/network/CommunitiesScreen';
-import MessagesListScreen from '../pages/messages/MessagesListScreen';
-import ChatScreen from '../pages/messages/ChatScreen';
+import MessagesScreen from '../screens/messages/MessagesScreen';
+import ChatScreen from '../screens/common/ChatScreen';
 import NotificationsScreen from '../pages/notifications/NotificationsScreen';
 import NotificationSettingsScreen from '../pages/notifications/NotificationSettingsScreen';
 import { UserProvider, useUser } from '../context/UserContext';
@@ -65,6 +67,8 @@ type Screen =
   | 'EditEvent'
   | 'Profile'
   | 'ProfileEdit'
+  | 'UserProfile'
+  | 'UserProfileDetail'
   | 'Network'
   | 'Connections'
   | 'Communities'
@@ -267,13 +271,17 @@ const AppNavigatorInner = () => {
         return <ProfileScreen navigation={navigation} />;
       case 'ProfileEdit':
         return <EditProfileScreen navigation={navigation} />;
+      case 'UserProfile':
+        return <UserProfileScreen navigation={navigation} route={{ params: navState.currentParams }} />;
+      case 'UserProfileDetail':
+        return <UserProfileDetailScreen navigation={navigation} route={{ params: navState.currentParams }} />;
 
       case 'Connections':
         return <ConnectionsScreen navigation={navigation} />;
       case 'Communities':
         return <CommunitiesScreen navigation={navigation} />;
       case 'Messages':
-        return <MessagesListScreen navigation={navigation} />;
+        return <MessagesScreen navigation={navigation} />;
       case 'Chat':
         return <ChatScreen navigation={navigation} route={{ params: navState.currentParams }} />;
       case 'Notifications':

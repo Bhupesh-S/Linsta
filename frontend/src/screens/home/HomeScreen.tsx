@@ -348,6 +348,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   feedContent: {
+    paddingTop: 8, // Small gap between stories and feed
     paddingBottom: 90, // Increased to account for fixed bottom navigation
   },
   loadingContainer: {

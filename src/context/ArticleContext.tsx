@@ -23,13 +23,9 @@ export const ArticleProvider: React.FC<{ children: ReactNode }> = ({ children })
   const loadArticles = async () => {
     try {
       const articlesJson = await AsyncStorage.getItem(STORAGE_KEY);
-      console.log('[ArticleContext] Loading articles from storage:', articlesJson);
       if (articlesJson) {
         const articles: Post[] = JSON.parse(articlesJson);
-        console.log('[ArticleContext] Loaded articles:', articles.length);
         setUserArticles(articles);
-      } else {
-        console.log('[ArticleContext] No articles found in storage');
       }
     } catch (error) {
       console.error('Error loading articles:', error);
@@ -38,7 +34,6 @@ export const ArticleProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const addArticle = async (articleData: Omit<Post, 'id' | 'timestamp' | 'likes' | 'comments' | 'shares'>) => {
     try {
-      console.log('[ArticleContext] Adding article:', articleData);
       const newArticle: Post = {
         ...articleData,
         id: `user_article_${Date.now()}`,
@@ -49,12 +44,9 @@ export const ArticleProvider: React.FC<{ children: ReactNode }> = ({ children })
         isArticle: true,
       };
 
-      console.log('[ArticleContext] New article created:', newArticle);
       const updatedArticles = [newArticle, ...userArticles];
-      console.log('[ArticleContext] Updated articles count:', updatedArticles.length);
       setUserArticles(updatedArticles);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedArticles));
-      console.log('[ArticleContext] Article saved to storage');
     } catch (error) {
       console.error('Error adding article:', error);
       throw error;
@@ -65,7 +57,6 @@ export const ArticleProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       await AsyncStorage.removeItem(STORAGE_KEY);
       setUserArticles([]);
-      console.log('[ArticleContext] All articles cleared');
     } catch (error) {
       console.error('Error clearing articles:', error);
     }

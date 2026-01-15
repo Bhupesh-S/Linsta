@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Event } from '../utils/eventTypes';
 
@@ -22,8 +22,12 @@ const EventCard: React.FC<EventCardProps> = ({ event, onPress }) => {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
       {/* Banner */}
-      <View style={[styles.banner, { backgroundColor: event.bannerColor }]}>
-        <Ionicons name={event.bannerIcon as any} size={60} color="#fff" />
+      <View style={[styles.banner, !event.imageUrl && { backgroundColor: event.bannerColor }]}>
+        {event.imageUrl ? (
+          <Image source={{ uri: event.imageUrl }} style={styles.bannerImage} resizeMode="cover" />
+        ) : (
+          <Ionicons name={event.bannerIcon as any} size={60} color="#fff" />
+        )}
         {event.isBookmarked && (
           <View style={styles.bookmarkBadge}>
             <Ionicons name="bookmark" size={20} color="#ffd700" />
@@ -102,6 +106,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    overflow: 'hidden',
+  },
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
   },
   bookmarkBadge: {
     position: 'absolute',

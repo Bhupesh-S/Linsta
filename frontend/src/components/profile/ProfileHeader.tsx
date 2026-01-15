@@ -19,7 +19,15 @@ const ProfileHeader: React.FC<Props> = ({ name, headline, location, photoUrl, re
 
   return (
     <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <Image source={{ uri: photoUrl || 'https://i.pravatar.cc/200' }} style={styles.avatar} />
+      {photoUrl ? (
+        <Image source={{ uri: photoUrl }} style={styles.avatar} />
+      ) : (
+        <View style={[styles.avatar, { backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>
+            {name?.charAt(0).toUpperCase() || 'U'}
+          </Text>
+        </View>
+      )}
       <View style={{ flex: 1 }}>
         <Text style={[styles.name, { color: colors.text }]}>{name}</Text>
         <Text style={{ color: colors.text }}>{headline}</Text>

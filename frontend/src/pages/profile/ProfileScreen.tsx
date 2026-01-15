@@ -21,7 +21,14 @@ const ProfileScreen: React.FC<Props> = ({ navigation, username = 'johndoe' }) =>
 
   useEffect(() => {
     fetchProfile();
-  }, []);
+    
+    // Add focus listener to refresh profile when returning from edit
+    const unsubscribe = navigation?.addListener?.('focus', () => {
+      fetchProfile();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const fetchProfile = async () => {
     try {

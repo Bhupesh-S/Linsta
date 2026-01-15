@@ -91,9 +91,12 @@ const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
     try {
       setSaving(true);
 
-      // Upload profile image first if selected
-      if (profileImageUri) {
+      // Upload profile image first if a new one was selected
+      // Check if image is local (not from Cloudinary)
+      if (profileImageUri && !profileImageUri.startsWith('http')) {
+        console.log('🖼️ Uploading new profile image to Cloudinary...');
         await profileApi.uploadProfileImage(profileImageUri);
+        console.log('✅ Profile image uploaded successfully');
       }
 
       // Convert comma-separated strings to arrays
@@ -107,6 +110,7 @@ const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
         .map(i => i.trim())
         .filter(i => i.length > 0);
 
+      console.log('📝 Updating profile data...');
       await profileApi.updateProfile({
         university: university.trim() || undefined,
         course: course.trim() || undefined,

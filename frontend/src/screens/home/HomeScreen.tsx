@@ -118,7 +118,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     if (item.isReel) {
       return <VideoReel post={item} isActive={activeReelId === item.id} />;
     }
-    return <PostCard post={item} />;
+    return (
+      <PostCard 
+        post={item} 
+        onLikeUpdated={fetchPosts}
+        onPostDeleted={fetchPosts}
+      />
+    );
   };
 
   // Track which items are currently viewable

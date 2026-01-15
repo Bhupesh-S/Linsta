@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,25 +9,18 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-interface Comment {
-  id: string;
-  user: {
-    name: string;
-    avatar: string;
-  };
-  text: string;
-  timestamp: string;
-  likes: number;
-}
+import { postsApi, Comment as BackendComment } from '../services/posts.api';
 
 interface CommentsModalProps {
   visible: boolean;
   onClose: () => void;
   postId: string;
   commentCount: number;
+  onCommentAdded?: () => void;
 }
 
 const CommentsModal: React.FC<CommentsModalProps> = ({
@@ -35,66 +28,77 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
   onClose,
   postId,
   commentCount,
+  onCommentAdded,
 }) => {
-  const [comments, setComments] = useState<Comment[]>([
-    {
-      id: '1',
-      user: { name: 'Sarah Johnson', avatar: 'person-circle' },
-      text: 'This is amazing! 🔥',
-      timestamp: '2h ago',
-      likes: 12,
-    },
-    {
-      id: '2',
-      user: { name: 'Mike Chen', avatar: 'person-circle' },
-      text: 'Great content! Keep it up 👍',
-      timestamp: '5h ago',
-      likes: 8,
-    },
-    {
-      id: '3',
-      user: { name: 'Emily Davis', avatar: 'person-circle' },
-      text: 'Love this! Where can I learn more?',
-      timestamp: '1d ago',
-      likes: 5,
-    },
-  ]);
+  const [comments, setComments] = useState<BackendComment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [posting, setPosting] = useState(false);
 
-  const handleAddComment = () => {
-    if (newComment.trim()) {
-      const comment: Comment = {
-        id: Date.now().toString(),
-        user: { name: 'You', avatar: 'person-circle' },
-        text: newComment,
-        timestamp: 'Just now',
-        likes: 0,
-      };
-      setComments([comment, ...comments]);
-      setNewComment('');
+  useEffect(() => {
+    if (visible) {
+      fetchComments();
+    }
+  }, [visible, postId]);
+
+  const fetchComments = async () => {
+    try {
+      setLoading(true);
+      const result = await postsApi.getComments(postId);
+      setComments(result);
+      console.log('✅ Comments loaded:', result.length);
+    } catch (error) {
+      console.error('❌ Fetch comments error:', error);
+      Alert.alert('Error', 'Failed to load comments');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const renderComment = ({ item }: { item: Comment }) => (
+  const handleAddComment = async () => {
+    if (!newComment.trim() || posting) return;
+
+    try {
+      setPosting(true);
+      const comment = await postsApi.addComment(postId, newComment.trim());
+      setComments([comment, ...comments]);
+      setNewComment('');
+      onCommentAdded?.();
+      console.log('✅ Comment added');
+    } catch (error) {
+      console.error('❌ Add comment error:', error);
+      Alert.alert('Error', 'Failed to add comment');
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const formatTimestamp = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const renderComment = ({ item }: { item: BackendComment }) => (
     <View style={styles.commentItem}>
       <View style={styles.commentAvatar}>
-        <Ionicons name={item.user.avatar as any} size={32} color="#666" />
+        <Ionicons name="person-circle" size={32} color="#666" />
       </View>
       <View style={styles.commentContent}>
         <View style={styles.commentHeader}>
-          <Text style={styles.commentUser}>{item.user.name}</Text>
-          <Text style={styles.commentTimestamp}>{item.timestamp}</Text>
+          <Text style={styles.commentUser}>{item.user?.name || 'User'}</Text>
+          <Text style={styles.commentTimestamp}>{formatTimestamp(item.createdAt)}</Text>
         </View>
         <Text style={styles.commentText}>{item.text}</Text>
-        <View style={styles.commentActions}>
-          <TouchableOpacity style={styles.commentAction}>
-            <Ionicons name="heart-outline" size={14} color="#666" />
-            <Text style={styles.commentActionText}>{item.likes}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.commentAction}>
-            <Text style={styles.commentActionText}>Reply</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </View>
   );
@@ -121,14 +125,31 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Comments List */}
-        <FlatList
-          data={comments}
-          renderItem={renderComment}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.commentsList}
-          showsVerticalScrollIndicator={false}
-        />
+        {/* Loading State */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0A66C2" />
+            <Text style={styles.loadingText}>Loading comments...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Comments List */}
+            <FlatList
+              data={comments}
+              renderItem={renderComment}
+              keyExtractor={(item) => item._id}
+              contentContainerStyle={styles.commentsList}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Ionicons name="chatbubble-outline" size={48} color="#ccc" />
+                  <Text style={styles.emptyText}>No comments yet</Text>
+                  <Text style={styles.emptySubtext}>Be the first to comment</Text>
+                </View>
+              }
+            />
+          </>
+        )}
 
         {/* Input */}
         <View style={styles.inputContainer}>
@@ -142,17 +163,22 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
             onChangeText={setNewComment}
             multiline
             maxLength={500}
+            editable={!posting}
           />
           <TouchableOpacity
             onPress={handleAddComment}
-            disabled={!newComment.trim()}
+            disabled={!newComment.trim() || posting}
             style={styles.sendButton}
           >
-            <Ionicons
-              name="send"
-              size={24}
-              color={newComment.trim() ? '#0A66C2' : '#ccc'}
-            />
+            {posting ? (
+              <ActivityIndicator size="small" color="#0A66C2" />
+            ) : (
+              <Ionicons
+                name="send"
+                size={24}
+                color={newComment.trim() ? '#0A66C2' : '#ccc'}
+              />
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -223,19 +249,33 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 8,
   },
-  commentActions: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  commentAction: {
-    flexDirection: 'row',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 4,
+    paddingVertical: 40,
   },
-  commentActionText: {
-    fontSize: 12,
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
     color: '#8e8e8e',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 16,
     fontWeight: '600',
+    color: '#262626',
+    marginTop: 12,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#8e8e8e',
+    marginTop: 4,
   },
   inputContainer: {
     flexDirection: 'row',

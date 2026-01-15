@@ -7,36 +7,36 @@ import {
   TouchableOpacity,
   Share as RNShare,
   Alert,
-  Clipboard,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 
 interface ShareModalProps {
   visible: boolean;
   onClose: () => void;
   postId: string;
-  postTitle: string;
+  postContent: string;
 }
 
 const ShareModal: React.FC<ShareModalProps> = ({
   visible,
   onClose,
   postId,
-  postTitle,
+  postContent,
 }) => {
   const shareUrl = `https://linsta.app/post/${postId}`;
 
-  const handleCopyLink = () => {
-    Clipboard.setString(shareUrl);
+  const handleCopyLink = async () => {
+    await Clipboard.setStringAsync(shareUrl);
     Alert.alert('Link copied!', 'The link has been copied to your clipboard.');
     onClose();
   };
 
   const handleShare = async () => {
     try {
+      const content = postContent.length > 50 ? postContent.substring(0, 50) + '...' : postContent;
       await RNShare.share({
-        message: `Check out this post: ${postTitle}\n${shareUrl}`,
-        url: shareUrl,
+        message: `Check out this post: ${content}\n${shareUrl}`,
       });
       onClose();
     } catch (error) {

@@ -1,20 +1,29 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
 import { Post } from '../utils/types';
 import { postsApi, Post as BackendPost } from '../services/posts.api';
+import { useAuth } from '../context/AuthContext';
+import CommentsModal from './CommentsModal';
+import ShareModal from './ShareModal';
 
 interface PostCardProps {
   post: Post | BackendPost;
   onLikeUpdated?: () => void;
+  onPostDeleted?: () => void;
 }
 
-const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated }) => {
+const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated, onPostDeleted }) => {
+  const { user } = useAuth();
   // Check if post is from backend (has _id) or mock (has id)
   const isBackendPost = '_id' in post;
   const [likeCount, setLikeCount] = useState(isBackendPost ? (post as BackendPost).likeCount : (post as Post).likes);
   const [isLiked, setIsLiked] = useState(isBackendPost ? (post as BackendPost).userLiked : false);
   const [isLiking, setIsLiking] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [commentCount, setCommentCount] = useState(isBackendPost ? (post as BackendPost).commentCount : (post as Post).comments);
 
   // Debug: Log media data
   if (isBackendPost) {
@@ -32,8 +41,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated }) => {
   const userTitle = isBackendPost ? (post as BackendPost).author?.email : (post as Post).user.title;
   const content = isBackendPost ? (post as BackendPost).caption : (post as Post).content;
   const timestamp = isBackendPost ? new Date((post as BackendPost).createdAt).toLocaleDateString() : (post as Post).timestamp;
-  const commentCount = isBackendPost ? (post as BackendPost).commentCount : (post as Post).comments;
   const postId = isBackendPost ? (post as BackendPost)._id : (post as Post).id;
+  const authorId = isBackendPost ? (post as BackendPost).authorId : null;
+  const isOwner = isBackendPost && user && authorId === user.id;
 
   const handleLike = async () => {
     if (!isBackendPost || isLiking) return;
@@ -60,6 +70,46 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated }) => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!isBackendPost || !isOwner) return;
+
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await postsApi.deletePost(postId);
+              Alert.alert('Success', 'Post deleted successfully');
+              onPostDeleted?.();
+            } catch (error) {
+              console.error('❌ Delete error:', error);
+              Alert.alert('Error', 'Failed to delete post');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleComment = () => {
+    if (!isBackendPost) return;
+    setShowComments(true);
+  };
+
+  const handleShare = () => {
+    if (!isBackendPost) return;
+    setShowShare(true);
+  };
+
+  const handleCommentAdded = () => {
+    setCommentCount(prev => prev + 1);
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -82,9 +132,11 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated }) => {
             </Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.menuButton} activeOpacity={0.6}>
-          <Ionicons name="ellipsis-horizontal" size={22} color="#666666" />
-        </TouchableOpacity>
+        {isOwner && (
+          <TouchableOpacity style={styles.menuButton} activeOpacity={0.6} onPress={handleDelete}>
+            <Ionicons name="trash-outline" size={22} color="#FF3250" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Content */}
@@ -92,7 +144,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated }) => {
         {content}
       </Text>
 
-      {/* Media Images */}
+      {/* Media Images and Videos */}
       {isBackendPost && (post as BackendPost).media && (post as BackendPost).media!.length > 0 && (
         <View style={styles.mediaContainer}>
           {(post as BackendPost).media!.map((mediaItem, index) => {
@@ -108,6 +160,23 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated }) => {
                   }}
                   onLoad={() => {
                     console.log('✅ Image loaded:', mediaItem.mediaUrl);
+                  }}
+                />
+              );
+            } else if (mediaItem.mediaType === 'video') {
+              return (
+                <Video
+                  key={mediaItem._id}
+                  source={{ uri: mediaItem.mediaUrl }}
+                  style={styles.postVideo}
+                  useNativeControls
+                  resizeMode={ResizeMode.CONTAIN}
+                  shouldPlay={false}
+                  onError={(error) => {
+                    console.error('❌ Video load error:', mediaItem.mediaUrl, error);
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Video loaded:', mediaItem.mediaUrl);
                   }}
                 />
               );
@@ -147,15 +216,36 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated }) => {
             {isLiked ? 'Liked' : 'Like'}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} activeOpacity={0.6}>
+        <TouchableOpacity style={styles.actionButton} activeOpacity={0.6} onPress={handleComment}>
           <Ionicons name="chatbubble-outline" size={24} color="#666666" />
           <Text style={styles.actionText} numberOfLines={1}>Comment</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} activeOpacity={0.6}>
+        <TouchableOpacity style={styles.actionButton} activeOpacity={0.6} onPress={handleShare}>
           <Ionicons name="paper-plane-outline" size={24} color="#666666" />
           <Text style={styles.actionText} numberOfLines={1}>Share</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Comments Modal */}
+      {isBackendPost && (
+        <CommentsModal
+          visible={showComments}
+          onClose={() => setShowComments(false)}
+          postId={postId}
+          commentCount={commentCount}
+          onCommentAdded={handleCommentAdded}
+        />
+      )}
+
+      {/* Share Modal */}
+      {isBackendPost && (
+        <ShareModal
+          visible={showShare}
+          onClose={() => setShowShare(false)}
+          postId={postId}
+          postContent={content}
+        />
+      )}
     </View>
   );
 };
@@ -244,6 +334,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 300,
     backgroundColor: '#F0F0F0',
+  },
+  postVideo: {
+    width: '100%',
+    height: 300,
+    backgroundColor: '#000000',
   },
   imageContainer: {
     width: '100%',

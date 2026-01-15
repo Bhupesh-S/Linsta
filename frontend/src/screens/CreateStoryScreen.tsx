@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Video } from 'expo-av';
 import { MediaPickerService, MediaResult } from '../utils/MediaPickerService';
 import BottomNavigation from '../components/BottomNavigation';
 import { useStories } from '../context/StoryContext';
@@ -72,22 +73,42 @@ const CreateStoryScreen: React.FC<CreateStoryScreenProps> = ({ navigation }) => 
       
       // If there's media, use the media upload API
       if (mediaUri && mediaType) {
-        const fileName = mediaUri.split('/').pop() || 'media';
-        const mimeType = mediaType === 'video' 
-          ? 'video/mp4' 
-          : 'image/jpeg';
+        const fileName = mediaUri.split('/').pop() || `story_${Date.now()}`;
         
-        console.log('📤 Uploading story with media:', { fileName, mimeType, caption: storyText });
+        // Ensure proper file extension and mime type
+        let finalFileName = fileName;
+        let mimeType = 'image/jpeg';
+        
+        if (mediaType === 'video') {
+          // Ensure video has proper extension
+          if (!finalFileName.match(/\.(mp4|mov|m4v)$/i)) {
+            finalFileName = `${finalFileName.replace(/\.[^.]+$/, '')}.mp4`;
+          }
+          mimeType = 'video/mp4';
+        } else {
+          // Ensure image has proper extension
+          if (!finalFileName.match(/\.(jpg|jpeg|png|gif)$/i)) {
+            finalFileName = `${finalFileName.replace(/\.[^.]+$/, '')}.jpg`;
+          }
+          mimeType = 'image/jpeg';
+        }
+        
+        console.log('📤 Uploading story with media:', { 
+          fileName: finalFileName, 
+          mimeType, 
+          mediaType,
+          caption: storyText 
+        });
         
         await storiesApi.createStoryWithMedia(
           {
             uri: mediaUri,
             type: mimeType,
-            name: fileName,
+            name: finalFileName,
           },
           storyText.trim() || undefined,
           undefined, // backgroundColor
-          mediaType === 'video' ? 15 : 5 // duration
+          mediaType === 'video' ? 15 : 5 // duration: 15s for video, 5s for image
         );
       } else {
         // Text-only story
@@ -226,10 +247,13 @@ const CreateStoryScreen: React.FC<CreateStoryScreenProps> = ({ navigation }) => 
             {mediaType === 'image' ? (
               <Image source={{ uri: mediaUri }} style={styles.previewImage} />
             ) : (
-              <View style={styles.videoPreview}>
-                <Ionicons name="videocam" size={48} color="#666" />
-                <Text style={styles.videoText}>Video selected</Text>
-              </View>
+              <Video
+                source={{ uri: mediaUri }}
+                style={styles.previewVideo}
+                useNativeControls
+                resizeMode="contain"
+                isLooping
+              />
             )}
             <TouchableOpacity 
               style={styles.removeMedia}
@@ -351,6 +375,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
     borderRadius: 12,
+  },
+  previewVideo: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: '#000',
   },
   videoPreview: {
     width: '100%',

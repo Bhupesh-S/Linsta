@@ -16,6 +16,7 @@ interface AuthContextType {
   loginWithGoogle: (idToken: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
+  reloadAuth: () => Promise<void>;
   loading: boolean;
 }
 
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   loginWithGoogle: async () => {},
   register: async () => {},
   logout: async () => {},
+  reloadAuth: async () => {},
   loading: true,
 });
 
@@ -145,8 +147,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const reloadAuth = async () => {
+    console.log('🔄 Reloading auth state from AsyncStorage...');
+    await loadStoredAuth();
+  };
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, token, login, loginWithGoogle, register, logout, loading }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, token, login, loginWithGoogle, register, logout, reloadAuth, loading }}>
       {children}
     </AuthContext.Provider>
   );

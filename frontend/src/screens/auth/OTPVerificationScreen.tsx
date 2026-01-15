@@ -9,8 +9,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi } from '../../services/api';
-import { useUser } from '../../context/UserContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface OTPVerificationScreenProps {
   navigation?: any;
@@ -27,7 +28,7 @@ const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
   route,
   onVerificationSuccess,
 }) => {
-  const { login } = useUser();
+  const { reloadAuth } = useAuth();
   const email = route?.params?.email || 'user@example.com';
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(30);
@@ -104,8 +105,16 @@ const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
       
       console.log('✅ OTP verified successfully!', result);
       
-      // Login user with the token received
-      // Store token or user data in context
+      // Save token and user to AsyncStorage and set authentication state
+      await AsyncStorage.setItem('token', result.token);
+      await AsyncStorage.setItem('user', JSON.stringify(result.user));
+      
+      console.log('✅ Token and user saved to AsyncStorage');
+      console.log('✅ User authenticated:', result.user);
+      
+      // Reload auth state in AuthContext
+      await reloadAuth();
+      console.log('✅ Auth state reloaded in context');
       
       // Show success and navigate
       Alert.alert(

@@ -12,10 +12,12 @@ import {
     TouchableOpacity,
     TextInput,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
+import { createEvent } from '../../services/events.api';
 
 interface Props {
     navigation?: any;
@@ -34,25 +36,79 @@ const CreateEventScreen: React.FC<Props> = ({ navigation }) => {
     const [startTime, setStartTime] = useState('');
     const [capacity, setCapacity] = useState('');
     const [ticketPrice, setTicketPrice] = useState('');
+    const [isOnline, setIsOnline] = useState(false);
+    const [meetingLink, setMeetingLink] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     const categories = ['Conference', 'Workshop', 'Networking', 'Entertainment', 'Sports', 'Food & Beverage'];
 
-    const handleCreate = () => {
-        if (!eventName || !category || !venueName || !startDate) {
-            Alert.alert('Required Fields', 'Please fill in all required fields');
+    const handleCreate = async () => {
+        if (!eventName || !category) {
+            Alert.alert('Required Fields', 'Please fill in event name and category');
             return;
         }
 
-        Alert.alert(
-            'Event Created!',
-            'Your event has been created successfully',
-            [
-                {
-                    text: 'OK',
-                    onPress: () => navigation?.goBack?.(),
-                },
-            ]
-        );
+        if (!isOnline && !venueName) {
+            Alert.alert('Required Fields', 'Please provide a venue name or mark as online event');
+            return;
+        }
+
+        if (isOnline && !meetingLink) {
+            Alert.alert('Required Fields', 'Please provide a meeting link for online event');
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+
+            // Build venue string from components
+            const venueString = isOnline 
+                ? 'Online Event' 
+                : [venueName, address, city].filter(Boolean).join(', ');
+
+            // Convert date string to ISO format if provided
+            let dateISO: string | undefined;
+            if (startDate) {
+                const dateParts = startDate.split('/');
+                if (dateParts.length === 3) {
+                    // Assuming format: DD/MM/YYYY
+                    const [day, month, year] = dateParts;
+                    dateISO = new Date(`${year}-${month}-${day}`).toISOString();
+                }
+            }
+
+            const eventData = {
+                title: eventName.trim(),
+                description: description.trim() || undefined,
+                category: category,
+                date: dateISO,
+                time: startTime || undefined,
+                venue: venueString || undefined,
+                isOnline: isOnline,
+                meetingLink: meetingLink.trim() || undefined,
+            };
+
+            const result = await createEvent(eventData);
+            
+            setIsLoading(false);
+            
+            Alert.alert(
+                'Success! 🎉',
+                'Your event has been created successfully',
+                [
+                    {
+                        text: 'OK',
+                        onPress: () => navigation?.goBack?.(),
+                    },
+                ]
+            );
+        } catch (error: any) {
+            setIsLoading(false);
+            Alert.alert(
+                'Error',
+                error.message || 'Failed to create event. Please try again.'
+            );
+        }
     };
 
     const handleSaveDraft = () => {
@@ -220,51 +276,97 @@ const CreateEventScreen: React.FC<Props> = ({ navigation }) => {
 
                 {/* Venue */}
                 <View style={[styles.section, { backgroundColor: colors.surface }]}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Venue</Text>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>
-                            Venue Name <Text style={styles.required}>*</Text>
-                        </Text>
-                        <TextInput
-                            style={[
-                                styles.input,
-                                { backgroundColor: colors.background, color: colors.text, borderColor: colors.border },
-                            ]}
-                            placeholder="Enter venue name"
-                            placeholderTextColor={colors.textSecondary}
-                            value={venueName}
-                            onChangeText={setVenueName}
-                        />
+                    <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Venue</Text>
+                        <TouchableOpacity
+                            style={styles.toggleContainer}
+                            onPress={() => setIsOnline(!isOnline)}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[styles.toggleLabel, { color: colors.textSecondary }]}>
+                                Online Event
+                            </Text>
+                            <View
+                                style={[
+                                    styles.toggle,
+                                    { backgroundColor: isOnline ? colors.primary : colors.border },
+                                ]}
+                            >
+                                <View
+                                    style={[
+                                        styles.toggleThumb,
+                                        isOnline && styles.toggleThumbActive,
+                                    ]}
+                                />
+                            </View>
+                        </TouchableOpacity>
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>Address</Text>
-                        <TextInput
-                            style={[
-                                styles.input,
-                                { backgroundColor: colors.background, color: colors.text, borderColor: colors.border },
-                            ]}
-                            placeholder="Street address"
-                            placeholderTextColor={colors.textSecondary}
-                            value={address}
-                            onChangeText={setAddress}
-                        />
-                    </View>
+                    {isOnline ? (
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.label, { color: colors.textSecondary }]}>
+                                Meeting Link <Text style={styles.required}>*</Text>
+                            </Text>
+                            <TextInput
+                                style={[
+                                    styles.input,
+                                    { backgroundColor: colors.background, color: colors.text, borderColor: colors.border },
+                                ]}
+                                placeholder="Enter meeting URL (Zoom, Teams, etc.)"
+                                placeholderTextColor={colors.textSecondary}
+                                value={meetingLink}
+                                onChangeText={setMeetingLink}
+                                autoCapitalize="none"
+                                keyboardType="url"
+                            />
+                        </View>
+                    ) : (
+                        <>
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                                    Venue Name <Text style={styles.required}>*</Text>
+                                </Text>
+                                <TextInput
+                                    style={[
+                                        styles.input,
+                                        { backgroundColor: colors.background, color: colors.text, borderColor: colors.border },
+                                    ]}
+                                    placeholder="Enter venue name"
+                                    placeholderTextColor={colors.textSecondary}
+                                    value={venueName}
+                                    onChangeText={setVenueName}
+                                />
+                            </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>City</Text>
-                        <TextInput
-                            style={[
-                                styles.input,
-                                { backgroundColor: colors.background, color: colors.text, borderColor: colors.border },
-                            ]}
-                            placeholder="Enter city"
-                            placeholderTextColor={colors.textSecondary}
-                            value={city}
-                            onChangeText={setCity}
-                        />
-                    </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: colors.textSecondary }]}>Address</Text>
+                                <TextInput
+                                    style={[
+                                        styles.input,
+                                        { backgroundColor: colors.background, color: colors.text, borderColor: colors.border },
+                                    ]}
+                                    placeholder="Street address"
+                                    placeholderTextColor={colors.textSecondary}
+                                    value={address}
+                                    onChangeText={setAddress}
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: colors.textSecondary }]}>City</Text>
+                                <TextInput
+                                    style={[
+                                        styles.input,
+                                        { backgroundColor: colors.background, color: colors.text, borderColor: colors.border },
+                                    ]}
+                                    placeholder="Enter city"
+                                    placeholderTextColor={colors.textSecondary}
+                                    value={city}
+                                    onChangeText={setCity}
+                                />
+                            </View>
+                        </>
+                    )}
                 </View>
 
                 {/* Tickets */}
@@ -316,6 +418,7 @@ const CreateEventScreen: React.FC<Props> = ({ navigation }) => {
                 <TouchableOpacity
                     style={[styles.previewButton, { borderColor: colors.border }]}
                     activeOpacity={0.7}
+                    disabled={isLoading}
                 >
                     <Ionicons name="eye-outline" size={20} color={colors.text} />
                     <Text style={[styles.previewButtonText, { color: colors.text }]}>Preview</Text>
@@ -325,9 +428,16 @@ const CreateEventScreen: React.FC<Props> = ({ navigation }) => {
                     style={[styles.createButton, { backgroundColor: colors.primary }]}
                     onPress={handleCreate}
                     activeOpacity={0.7}
+                    disabled={isLoading}
                 >
-                    <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                    <Text style={styles.createButtonText}>Create Event</Text>
+                    {isLoading ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                        <>
+                            <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                            <Text style={styles.createButtonText}>Create Event</Text>
+                        </>
+                    )}
                 </TouchableOpacity>
             </View>
         </View>
@@ -381,6 +491,37 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '700',
         marginBottom: 16,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    toggleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    toggleLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    toggle: {
+        width: 48,
+        height: 28,
+        borderRadius: 14,
+        padding: 2,
+        justifyContent: 'center',
+    },
+    toggleThumb: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+    },
+    toggleThumbActive: {
+        alignSelf: 'flex-end',
     },
     uploadBox: {
         borderWidth: 2,

@@ -18,12 +18,12 @@ interface StoryCarouselProps {
   onYourStoryPress?: () => void;
 }
 
-const StoryCarousel: React.FC<StoryCarouselProps> = ({ 
-  stories, 
+const StoryCarousel: React.FC<StoryCarouselProps> = ({
+  stories,
   userStories = [],
-  onStoryPress, 
+  onStoryPress,
   onAddStory,
-  onYourStoryPress 
+  onYourStoryPress
 }) => {
   const hasUserStories = userStories.length > 0;
   const latestUserStory = hasUserStories ? userStories[userStories.length - 1] : null;
@@ -36,7 +36,7 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({
         contentContainerStyle={styles.scrollContent}
       >
         {/* Your Story / Add Story */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.storyItem}
           onPress={onAddStory}
           activeOpacity={0.7}
@@ -99,39 +99,6 @@ const styles = StyleSheet.create({
     width: 80,
   },
   storyRing: {
-<<<<<<< HEAD:frontend/src/components/StoryCarousel.tsx
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    padding: 3,
-    borderWidth: 2.5,
-    borderColor: '#CCCCCC',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#999',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },  unviewedRing: {
-    borderColor: '#E1306C',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#E1306C',
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },  addStoryRing: {
-=======
     width: 74,
     height: 74,
     borderRadius: 37,
@@ -143,12 +110,25 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#DBDBDB',
   },
+  unviewedRing: {
+    borderColor: '#E1306C',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#E1306C',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
   activeStoryRing: {
     borderWidth: 3,
     borderColor: '#FF6B35', // Red-orange color similar to Instagram
   },
   addStoryRing: {
->>>>>>> origin/frontend:src/components/StoryCarousel.tsx
     borderColor: '#DBDBDB',
     borderWidth: 2,
   },
@@ -161,8 +141,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
-<<<<<<< HEAD:frontend/src/components/StoryCarousel.tsx
-=======
     overflow: 'hidden',
   },
   avatarImage: {
@@ -182,7 +160,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 3,
     borderColor: '#FFFFFF',
->>>>>>> origin/frontend:src/components/StoryCarousel.tsx
   },
   storyName: {
     fontSize: 12,

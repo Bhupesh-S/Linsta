@@ -7,12 +7,15 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Video } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import BottomNavigation from '../components/BottomNavigation';
 import { MediaPickerService } from '../utils/MediaPickerService';
+import { postsApi } from '../services/posts.api';
 
 interface CreateReelScreenProps {
   navigation?: any;
@@ -40,13 +43,57 @@ const CreateReelScreen: React.FC<CreateReelScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handlePost = () => {
-    if (caption.trim()) {
+  const handlePost = async () => {
+    if (!videoUri) {
+      Alert.alert('Error', 'Please select or record a video');
+      return;
+    }
+
+    if (!caption.trim()) {
+      Alert.alert('Error', 'Please add a caption');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      console.log('🎬 Uploading reel to backend...');
+      
+      // Prepare video file for upload
+      const fileName = videoUri.split('/').pop() || `reel_${Date.now()}.mp4`;
+      const finalFileName = fileName.match(/\.(mp4|mov|m4v)$/i) 
+        ? fileName 
+        : `${fileName.replace(/\.[^.]+$/, '')}.mp4`;
+      
+      const mediaFile = {
+        uri: videoUri,
+        type: 'video' as const,
+        name: finalFileName
+      };
+      
+      // Add 🎬 emoji to caption to mark it as a reel
+      const reelCaption = `🎬 ${caption}`;
+      
+      console.log('📤 Uploading reel video:', finalFileName);
+      
+      // Upload reel using posts API with media
+      await postsApi.createPostWithMedia(reelCaption, [mediaFile]);
+      
+      console.log('✅ Reel posted successfully');
+      
+      // Reset form
+      setCaption('');
+      setVideoUri(null);
+      setSelectedOption(null);
+      
       Alert.alert('Success', 'Reel posted!', [
         { text: 'OK', onPress: () => navigation?.navigate('Home') }
       ]);
-    } else {
-      Alert.alert('Error', 'Please add a caption');
+    } catch (error: any) {
+      console.error('❌ Error posting reel:', error);
+      Alert.alert('Error', error.message || 'Failed to post reel. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -54,12 +101,16 @@ const CreateReelScreen: React.FC<CreateReelScreenProps> = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack()}>
+        <TouchableOpacity onPress={() => navigation?.goBack()} disabled={isLoading}>
           <Ionicons name="close" size={28} color="#262626" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Reel</Text>
-        <TouchableOpacity onPress={handlePost}>
-          <Text style={styles.postButton}>Post</Text>
+        <TouchableOpacity onPress={handlePost} disabled={isLoading}>
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#0A66C2" />
+          ) : (
+            <Text style={styles.postButton}>Post</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -72,6 +123,7 @@ const CreateReelScreen: React.FC<CreateReelScreenProps> = ({ navigation }) => {
             style={styles.optionCard}
             onPress={handleRecord}
             activeOpacity={0.8}
+            disabled={isLoading}
           >
             <LinearGradient
               colors={['#EC4899', '#F472B6'] as const}
@@ -93,6 +145,7 @@ const CreateReelScreen: React.FC<CreateReelScreenProps> = ({ navigation }) => {
             style={styles.optionCard}
             onPress={handleUpload}
             activeOpacity={0.8}
+            disabled={isLoading}
           >
             <LinearGradient
               colors={['#7C3AED', '#A855F7'] as const}
@@ -114,17 +167,20 @@ const CreateReelScreen: React.FC<CreateReelScreenProps> = ({ navigation }) => {
         {/* Video Preview */}
         {videoUri && (
           <View style={styles.videoPreviewContainer}>
-            <View style={styles.videoPlaceholder}>
-              <Ionicons name="videocam" size={64} color="#0A66C2" />
-              <Text style={styles.videoSelectedText}>Video selected</Text>
-              <Text style={styles.videoUriText} numberOfLines={1}>{videoUri.split('/').pop()}</Text>
-            </View>
+            <Video
+              source={{ uri: videoUri }}
+              style={styles.videoPreview}
+              useNativeControls
+              resizeMode="contain"
+              isLooping
+            />
             <TouchableOpacity 
               style={styles.removeVideo}
               onPress={() => {
                 setVideoUri(null);
                 setSelectedOption(null);
               }}
+              disabled={isLoading}
             >
               <Ionicons name="close-circle" size={28} color="#fff" />
             </TouchableOpacity>
@@ -142,6 +198,7 @@ const CreateReelScreen: React.FC<CreateReelScreenProps> = ({ navigation }) => {
             value={caption}
             onChangeText={setCaption}
             maxLength={150}
+            editable={!isLoading}
           />
           <Text style={styles.charCount}>{caption.length}/150</Text>
         </View>
@@ -254,6 +311,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
+  },
+  videoPreview: {
+    width: '100%',
+    height: 400,
+    backgroundColor: '#000',
+    borderRadius: 12,
   },
   videoPlaceholder: {
     width: '100%',

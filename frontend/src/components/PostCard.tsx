@@ -43,26 +43,30 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated, onPostDeleted 
   const timestamp = isBackendPost ? new Date((post as BackendPost).createdAt).toLocaleDateString() : (post as Post).timestamp;
   const postId = isBackendPost ? (post as BackendPost)._id : (post as Post).id;
   
-  // Extract authorId - handle both string and object cases
+  // Extract authorId - use author._id since author is populated
   let authorId: string | null = null;
   if (isBackendPost) {
     const backendPost = post as BackendPost;
-    // Check if authorId is a string or an object
-    if (typeof backendPost.authorId === 'string') {
-      authorId = backendPost.authorId;
-    } else if (backendPost.author?._id) {
-      // If it's populated, use author._id
+    // First try to get from author object (populated)
+    if (backendPost.author?._id) {
       authorId = backendPost.author._id;
+    } 
+    // Fallback to authorId if it's a plain string
+    else if (typeof backendPost.authorId === 'string') {
+      authorId = backendPost.authorId;
     }
   }
   
-  const isOwner = isBackendPost && user && authorId === user.id;
+  const isOwner = isBackendPost && user && authorId && authorId === user.id;
 
   // Debug: Log ownership check
   if (isBackendPost) {
+    const backendPost = post as BackendPost;
     console.log('🔒 Ownership check:', {
       postId,
       authorId,
+      'author._id': backendPost.author?._id,
+      'raw authorId': typeof backendPost.authorId,
       userId: user?.id,
       isOwner,
       match: authorId === user?.id

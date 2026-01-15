@@ -9,6 +9,8 @@ import {
   CommunitiesResponse,
   CommunityActionResponse,
   PermissionsResponse,
+  FollowResponse,
+  BlockResponse,
   SearchFilters,
   ConnectRequest,
   ConnectionResponse,
@@ -79,6 +81,30 @@ export interface NetworkAPI {
    * Get pending connection requests
    */
   getConnectionRequests(): Promise<{ requests: any[] }>;
+
+  /**
+   * POST /follows/{userId}
+   * Follow a user (one-way relationship)
+   */
+  followUser(userId: string): Promise<FollowResponse>;
+
+  /**
+   * DELETE /follows/{userId}
+   * Unfollow a user
+   */
+  unfollowUser(userId: string): Promise<FollowResponse>;
+
+  /**
+   * POST /connections/block
+   * Block a user (prevents all interactions)
+   */
+  blockUser(userId: string): Promise<BlockResponse>;
+
+  /**
+   * DELETE /connections/block/{userId}
+   * Unblock a user
+   */
+  unblockUser(userId: string): Promise<BlockResponse>;
 
   /**
    * GET /network/stats

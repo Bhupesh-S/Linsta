@@ -18,10 +18,12 @@ import { UserCard } from '../components/UserCard';
 import { CommunityCard } from '../components/CommunityCard';
 import { ProfilePreviewModal } from '../components/ProfilePreviewModal';
 import { NetworkUser, SearchFilters } from '../types/network.types';
+import { Job, mockJobs } from '../types/job.types';
+import { JobCard } from '../components/JobCard';
 import BottomNavigation from '../components/BottomNavigation';
 import CreateContentModal from '../components/CreateContentModal';
 
-type TabType = 'feed' | 'connections' | 'suggestions' | 'requests';
+type TabType = 'jobs' | 'connections' | 'suggestions' | 'requests';
 
 interface NetworkScreenProps {
   navigation?: any;
@@ -207,12 +209,16 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
           </View>
         );
 
-      case 'feed':
+      case 'jobs':
         return (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="newspaper-outline" size={64} color="#d1d5db" />
-            <Text style={styles.emptyText}>Professional feed coming soon</Text>
-            <Text style={styles.emptySubtext}>Stay tuned for updates from your network</Text>
+          <View>
+            {mockJobs.map(job => (
+              <JobCard
+                key={job.id}
+                job={job}
+                onApply={(jobId) => Alert.alert('Apply', `Applying for job: ${jobId}`)}
+              />
+            ))}
           </View>
         );
 
@@ -227,11 +233,6 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Network</Text>
-          {stats && stats.pendingRequestsCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{stats.pendingRequestsCount}</Text>
-            </View>
-          )}
         </View>
       </View>
 
@@ -277,7 +278,7 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
-          {(['feed', 'connections', 'suggestions', 'requests'] as TabType[]).map(tab => (
+          {(['jobs', 'connections', 'suggestions', 'requests'] as TabType[]).map(tab => (
             <TouchableOpacity
               key={tab}
               onPress={() => setActiveTab(tab)}
@@ -297,7 +298,13 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
           <Ionicons name="search" size={20} color="#6b7280" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search people..."
+            placeholder={
+              activeTab === 'jobs' ? 'Search jobs...' :
+              activeTab === 'connections' ? 'Search connections...' :
+              activeTab === 'suggestions' ? 'Search suggestions...' :
+              activeTab === 'requests' ? 'Search requests...' :
+              'Search people...'
+            }
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={handleSearch}

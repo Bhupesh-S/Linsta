@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { useEvents } from '../../context/EventContext';
 import StepIndicator, { Step } from '../../components/event-creation/StepIndicator';
 import BasicInfoStep from '../../components/event-creation/BasicInfoStep';
 import DateTimeStep from '../../components/event-creation/DateTimeStep';
@@ -20,10 +21,23 @@ const steps: Step[] = [
 
 const CreateEventWizard: React.FC = () => {
   const { colors } = useTheme();
+  const { addEvent, saveDraft, getDraft, clearDraft } = useEvents();
   const [index, setIndex] = useState(0);
   const [data, setData] = useState<EventFormData>(defaultEventFormData);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof EventFormData, string>>>({});
+
+  // Load draft on mount
+  useEffect(() => {
+    loadDraftData();
+  }, []);
+
+  const loadDraftData = async () => {
+    const draft = await getDraft();
+    if (draft) {
+      setData(draft);
+    }
+  };
 
   const currentStepKey = steps[index].key;
 
@@ -65,33 +79,56 @@ const CreateEventWizard: React.FC = () => {
     return true;
   }, [currentStepKey, data]);
 
-  const onNext = () => {
+  const onNext = async () => {
     if (!validate()) return;
+    // Auto-save draft before navigating
+    await saveDraft(data);
     setIndex((i) => Math.min(i + 1, steps.length - 1));
   };
 
-  const onBack = () => setIndex((i) => Math.max(0, i - 1));
+  const onBack = async () => {
+    // Auto-save draft before navigating
+    await saveDraft(data);
+    setIndex((i) => Math.max(0, i - 1));
+  };
 
   const onPublish = async (asDraft = false) => {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    // mock result
-    alert(asDraft ? 'Draft saved' : 'Event published');
+    try {
+      if (asDraft) {
+        await saveDraft(data);
+        Alert.alert('Success', 'Draft saved successfully!');
+      } else {
+        await addEvent(data);
+        await clearDraft();
+        Alert.alert('Success', 'Event published successfully!', [
+          { text: 'OK', onPress: () => {
+            // Reset form
+            setData(defaultEventFormData);
+            setIndex(0);
+          }}
+        ]);
+      }
+    } catch (error) {
+      console.error('Error publishing event:', error);
+      Alert.alert('Error', 'Failed to publish event. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderStep = () => {
     switch (currentStepKey) {
       case 'basic':
-        return <BasicInfoStep value={data} onChange={onChange} errors={errors} />;
+        return <BasicInfoStep value={data} onChange={onChange} errors={errors} onNext={onNext} onPrevious={onBack} currentStep={index} totalSteps={steps.length} />;
       case 'datetime':
-        return <DateTimeStep value={data} onChange={onChange} errors={errors} />;
+        return <DateTimeStep value={data} onChange={onChange} errors={errors} onNext={onNext} onPrevious={onBack} currentStep={index} totalSteps={steps.length} />;
       case 'location':
-        return <LocationStep value={data} onChange={onChange} errors={errors} />;
+        return <LocationStep value={data} onChange={onChange} errors={errors} onNext={onNext} onPrevious={onBack} currentStep={index} totalSteps={steps.length} />;
       case 'tickets':
-        return <TicketsStep value={data} onChange={onChange} errors={errors} />;
+        return <TicketsStep value={data} onChange={onChange} errors={errors} onNext={onNext} onPrevious={onBack} currentStep={index} totalSteps={steps.length} />;
       case 'preview':
-        return <PreviewPublishStep value={data} />;
+        return <PreviewPublishStep value={data} onPrevious={onBack} onPublish={() => onPublish(false)} isPublishing={loading} currentStep={index} totalSteps={steps.length} />;
       default:
         return null;
     }

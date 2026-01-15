@@ -23,7 +23,8 @@ const storySchema = new Schema<IStory>({
   },
   mediaUrl: {
     type: String,
-    required: true,
+    required: false, // Allow text-only stories
+    default: 'text-only',
   },
   mediaType: {
     type: String,

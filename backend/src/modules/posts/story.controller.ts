@@ -11,21 +11,26 @@ export class StoryController {
       const userId = req.userId;
       const { mediaUrl, mediaType, caption, backgroundColor, duration } = req.body;
 
-      if (!mediaUrl || !mediaType) {
-        res.status(400).json({ error: "Media URL and type are required" });
+      // Allow text-only stories (caption without media)
+      if (!caption && !mediaUrl) {
+        res.status(400).json({ error: "Caption or media is required" });
         return;
       }
+
+      // For text-only stories, create a placeholder
+      const finalMediaUrl = mediaUrl || 'text-only';
+      const finalMediaType = mediaType || 'image';
 
       // Set expiration to 24 hours from now
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       const story = await Story.create({
         userId,
-        mediaUrl,
-        mediaType,
+        mediaUrl: finalMediaUrl,
+        mediaType: finalMediaType,
         caption,
-        backgroundColor,
-        duration: duration || (mediaType === 'video' ? 15 : 5),
+        backgroundColor: backgroundColor || '#0A66C2',
+        duration: duration || (finalMediaType === 'video' ? 15 : 5),
         expiresAt,
       });
 

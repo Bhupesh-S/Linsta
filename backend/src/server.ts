@@ -17,7 +17,9 @@ const startServer = async (): Promise<void> => {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`✓ Server running on port ${PORT}`);
       console.log(`✓ Accessible at http://localhost:${PORT}`);
-      console.log(`✓ Accessible at http://192.168.43.114:${PORT}`);
+      console.log(`✓ Accessible at http://192.168.28.61:${PORT} (Wi-Fi)`);
+      console.log(`✓ Accessible at http://192.168.56.1:${PORT} (Ethernet)`);
+      console.log(`✓ Accessible at http://10.0.2.2:${PORT} (Android Emulator)`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);

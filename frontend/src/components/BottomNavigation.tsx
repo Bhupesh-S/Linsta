@@ -5,16 +5,18 @@ import { Ionicons } from '@expo/vector-icons';
 interface BottomNavigationProps {
   activeTab?: string;
   navigation?: any;
+  onCreatePress?: () => void;
 }
 
 const BottomNavigation: React.FC<BottomNavigationProps> = ({
   activeTab = 'Home',
   navigation,
+  onCreatePress,
 }) => {
   const tabs = [
     { id: 'Home', icon: 'home', label: 'Home' },
     { id: 'Network', icon: 'people', label: 'Network' },
-    { id: 'Create', icon: 'add-circle', label: 'Post' },
+    { id: 'Create', icon: 'add-circle', label: '' },
     { id: 'Events', icon: 'calendar', label: 'Events' },
     { id: 'Profile', icon: 'person', label: 'Me' },
   ];
@@ -26,8 +28,11 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({
       navigation.navigate('Home');
     } else if (tabId === 'Network' && navigation) {
       navigation.navigate('Network');
-    } else if (tabId === 'Create' && navigation) {
-      navigation.navigate('CreateEvent');
+    } else if (tabId === 'Create') {
+      // Navigate to CreateContent screen
+      if (navigation) {
+        navigation.navigate('CreateContent');
+      }
     } else if (tabId === 'Profile' && navigation) {
       navigation.navigate('Profile');
     }
@@ -45,23 +50,25 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({
             activeOpacity={0.6}
             onPress={() => handleTabPress(tab.id)}
           >
-            <View style={styles.tabContent}>
+            <View style={[styles.tabContent, tab.id === 'Create' && styles.createTabContent]}>
               <Ionicons
                 name={isActive ? tab.icon : `${tab.icon}-outline` as any}
-                size={28}
-                color={isActive ? '#0A66C2' : '#666666'}
+                size={tab.id === 'Create' ? 40 : 28}
+                color={tab.id === 'Create' ? '#0A66C2' : (isActive ? '#0A66C2' : '#666666')}
               />
-              <Text
-                style={[
-                  styles.label,
-                  isActive && styles.activeLabel,
-                ]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {tab.label}
-              </Text>
-              {isActive && <View style={styles.activeIndicator} />}
+              {tab.label !== '' && (
+                <Text
+                  style={[
+                    styles.label,
+                    isActive && styles.activeLabel,
+                  ]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {tab.label}
+                </Text>
+              )}
+              {isActive && tab.id !== 'Create' && <View style={styles.activeIndicator} />}
             </View>
           </TouchableOpacity>
         );
@@ -104,6 +111,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 4,
     position: 'relative',
+  },
+  createTabContent: {
+    paddingVertical: 0,
+    marginTop: -6,
   },
   label: {
     fontSize: 11,

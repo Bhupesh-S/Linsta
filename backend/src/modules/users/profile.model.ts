@@ -8,6 +8,7 @@ export interface IUserProfile extends Document {
   year?: string;
   skills: string[];
   interests: string[];
+  profileImageUrl?: string;
 }
 
 const profileSchema = new Schema<IUserProfile>({
@@ -33,6 +34,9 @@ const profileSchema = new Schema<IUserProfile>({
   interests: {
     type: [String],
     default: [],
+  },
+  profileImageUrl: {
+    type: String,
   },
 });
 

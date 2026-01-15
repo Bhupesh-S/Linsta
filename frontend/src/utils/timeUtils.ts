@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Format timestamp to relative time (e.g., "2h ago", "5m ago", "just now")
  */
 export const formatRelativeTime = (timestamp: string): string => {

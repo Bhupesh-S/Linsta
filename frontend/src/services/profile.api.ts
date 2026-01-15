@@ -16,6 +16,7 @@ export interface UserProfileResponse {
     year?: string;
     skills: string[];
     interests: string[];
+    profileImageUrl?: string;
   };
 }
 
@@ -81,5 +82,77 @@ export const profileApi = {
       console.error('❌ Update profile error:', error);
       throw error;
     }
+  },
+
+  // Upload profile image
+  uploadProfileImage: async (imageUri: string): Promise<UserProfileResponse> => {
+    console.log('📱 Uploading profile image...', imageUri);
+
+    return new Promise(async (resolve, reject) => {
+      try {
+        const apiUrl = await getApiUrl();
+        const authHeader = await getAuthHeader();
+
+        // Create FormData
+        const formData = new FormData();
+
+        // Get file extension and create proper filename
+        const uriParts = imageUri.split('.');
+        const fileType = uriParts[uriParts.length - 1];
+
+        // Create file object for React Native
+        const file = {
+          uri: imageUri,
+          name: `profile.${fileType}`,
+          type: `image/${fileType}`,
+        };
+
+        console.log('📤 Uploading file:', file);
+
+        // Append image to FormData - React Native format
+        formData.append('profileImage', file as any);
+
+        // Use XMLHttpRequest for better React Native compatibility
+        const xhr = new XMLHttpRequest();
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              console.log('✅ Profile image uploaded successfully');
+              resolve(data);
+            } catch (error) {
+              reject(new Error('Failed to parse response'));
+            }
+          } else {
+            try {
+              const error = JSON.parse(xhr.responseText);
+              console.error('❌ Upload profile image error:', error);
+              reject(new Error(error.error || 'Failed to upload profile image'));
+            } catch {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          }
+        };
+
+        xhr.onerror = () => {
+          console.error('❌ Network error during upload');
+          reject(new Error('Network error during upload'));
+        };
+
+        xhr.open('POST', `${apiUrl}/api/users/profile/image`);
+
+        // Set auth header
+        if (authHeader.Authorization) {
+          xhr.setRequestHeader('Authorization', authHeader.Authorization);
+        }
+
+        // Don't set Content-Type - let XMLHttpRequest set it with boundary
+        xhr.send(formData);
+      } catch (error: any) {
+        console.error('❌ Upload profile image error:', error);
+        reject(error);
+      }
+    });
   },
 };

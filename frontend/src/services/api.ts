@@ -1,15 +1,26 @@
 // API service for backend communication with auto-detection
 // Automatically finds the working backend URL for any network configuration
 
+// 🔧 MANUAL OVERRIDE: Set this to force a specific URL (for debugging)
+// Example: const MANUAL_URL = 'http://192.168.28.61:5000';
+const MANUAL_URL: string | null = null; // Set to null for auto-detection
+
 // Dynamic API URL - will be set by auto-detection
 let API_BASE_URL = 'http://localhost:5000'; // Fallback default
 
 // Common backend endpoints to try (without specific IPs)
 const getCommonUrls = (): string[] => {
+  // If manual URL is set, use it exclusively
+  if (MANUAL_URL) {
+    console.log('🔧 Using MANUAL_URL:', MANUAL_URL);
+    return [MANUAL_URL];
+  }
+  
   const urls = [
-    'http://192.168.43.114:5000',   // Your PC's IP on Wi-Fi
+    'http://192.168.28.61:5000',    // Your PC's Wi-Fi IP (Primary)
+    'http://192.168.56.1:5000',     // Your PC's Ethernet IP
     'http://10.0.2.2:5000',         // Android emulator
-    'http://10.46.192.61:5000',     // Alternative network IP
+    'http://192.168.43.114:5000',   // Alternative Wi-Fi IP
     'http://localhost:5000',        // Localhost/iOS simulator
   ];
   
@@ -107,14 +118,20 @@ export const authApi = {
       console.log('Registering user with:', { email: data.email, name: data.name });
       console.log('API URL:', `${apiUrl}/api/auth/register`);
       
+      // Add timeout for network request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(`${apiUrl}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       const result = await response.json();
       console.log('Registration response:', result);
 
@@ -124,8 +141,14 @@ export const authApi = {
       }
 
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
+      
+      // Check if network error OR timeout error
+      if (error.name === 'AbortError' || error.message === 'Network request failed') {
+        throw new Error('Cannot connect to server. Please check: your internet connection and try again.');
+      }
+      
       throw error;
     }
   },
@@ -136,14 +159,20 @@ export const authApi = {
       console.log('🔐 Logging in user:', data.email);
       console.log('API URL:', `${apiUrl}/api/auth/login`);
       
+      // Add timeout for network request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       const result = await response.json();
       console.log('✅ Login API response:', JSON.stringify(result, null, 2));
       console.log('✅ Has token?', !!result.token);
@@ -155,8 +184,14 @@ export const authApi = {
       }
 
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Login error:', error);
+      
+      // Check if network error OR timeout error
+      if (error.name === 'AbortError' || error.message === 'Network request failed') {
+        throw new Error('Cannot connect to server. Please check: your internet connection and try again.');
+      }
+      
       throw error;
     }
   },

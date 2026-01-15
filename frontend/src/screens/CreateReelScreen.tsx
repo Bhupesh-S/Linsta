@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -148,12 +148,12 @@ const CreateReelScreen: React.FC<CreateReelScreenProps> = ({ navigation }) => {
 
         {/* Reel Tips */}
         <View style={styles.tipsContainer}>
-          <Text style={styles.tipsTitle}>≡ƒÄ¼ Reel Tips</Text>
-          <Text style={styles.tipText}>ΓÇó Keep it under 60 seconds</Text>
-          <Text style={styles.tipText}>ΓÇó Use vertical format (9:16)</Text>
-          <Text style={styles.tipText}>ΓÇó Add trending music or sounds</Text>
-          <Text style={styles.tipText}>ΓÇó Include captions for accessibility</Text>
-          <Text style={styles.tipText}>ΓÇó Use hashtags to increase reach</Text>
+          <Text style={styles.tipsTitle}>🎬 Reel Tips</Text>
+          <Text style={styles.tipText}>• Keep it under 60 seconds</Text>
+          <Text style={styles.tipText}>• Use vertical format (9:16)</Text>
+          <Text style={styles.tipText}>• Add trending music or sounds</Text>
+          <Text style={styles.tipText}>• Include captions for accessibility</Text>
+          <Text style={styles.tipText}>• Use hashtags to increase reach</Text>
         </View>
       </ScrollView>
 

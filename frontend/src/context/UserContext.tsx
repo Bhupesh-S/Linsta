@@ -18,6 +18,7 @@ interface UserContextType {
         id: '1',
         email: 'dev@linsta.com',
         fullName: 'Development User',
+        title: 'Software Developer',
         profileComplete: true,
       },
       isAuthenticated: true,

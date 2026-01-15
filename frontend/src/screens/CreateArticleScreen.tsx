@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -244,12 +244,12 @@ const CreateArticleScreen: React.FC<CreateArticleScreenProps> = ({ navigation })
 
         {/* Writing Tips */}
         <View style={styles.tipsContainer}>
-          <Text style={styles.tipsTitle}>Γ£ì∩╕Å Writing Tips</Text>
-          <Text style={styles.tipText}>ΓÇó Start with a compelling headline</Text>
-          <Text style={styles.tipText}>ΓÇó Break content into sections</Text>
-          <Text style={styles.tipText}>ΓÇó Add relevant images or media</Text>
-          <Text style={styles.tipText}>ΓÇó End with a call to action</Text>
-          <Text style={styles.tipText}>ΓÇó Use hashtags for better discoverability</Text>
+          <Text style={styles.tipsTitle}>✍️ Writing Tips</Text>
+          <Text style={styles.tipText}>• Start with a compelling headline</Text>
+          <Text style={styles.tipText}>• Break content into sections</Text>
+          <Text style={styles.tipText}>• Add relevant images or media</Text>
+          <Text style={styles.tipText}>• End with a call to action</Text>
+          <Text style={styles.tipText}>• Use hashtags for better discoverability</Text>
         </View>
       </ScrollView>
 

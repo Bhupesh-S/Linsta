@@ -1,38 +1,167 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusBar } from 'react-native';
+/**
+ * Enhanced NotificationsScreen Component
+ * Full-screen professional notification view with all features
+ * Instagram/LinkedIn style with grouping, filters, and actions
+ */
+
+import React, { useState, useCallback, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+  StatusBar,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-import NotificationCard from '../../components/notifications/NotificationCard';
+import { Notification } from '../../types/notification.types';
+import {
+  markAsRead,
+  markAllAsRead,
+  countUnreadNotifications,
+} from '../../utils/notificationUtils';
+import { getMockNotifications } from '../../data/mockNotifications';
+import NotificationList from '../../components/notifications/NotificationList';
+import NotificationBadge from '../../components/notifications/NotificationBadge';
+import NotificationCategoryTabs from '../../components/notifications/NotificationCategoryTabs';
+import {
+  NotificationCategory,
+  notificationCategories,
+} from '../../types/notificationSettings.types';
 
-interface Props { navigation?: any }
+interface Props {
+  navigation?: any;
+}
 
 type FilterType = 'all' | 'unread';
 
 const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
   const { colors } = useTheme();
   const [filter, setFilter] = useState<FilterType>('all');
-  const [notifications, setNotifications] = useState([
-    { id: 'n1', type: 'message' as const, title: 'New message', description: 'Priya sent you a message', time: '2m', unread: true },
-    { id: 'n2', type: 'connection' as const, title: 'New connection', description: 'Rahul connected with you', time: '1h', unread: false },
-    { id: 'n3', type: 'event' as const, title: 'RSVP reminder', description: 'Your event starts tomorrow', time: '2d', unread: true },
-    { id: 'n4', type: 'community' as const, title: 'Community update', description: 'New post in React Group', time: '3d', unread: false },
-  ]);
+  const [selectedCategory, setSelectedCategory] = useState<NotificationCategory>('all');
+  const [notifications, setNotifications] = useState<Notification[]>(
+    getMockNotifications()
+  );
+  const [loading, setLoading] = useState(false);
 
-  const filteredItems = filter === 'unread'
-    ? notifications.filter(n => n.unread)
-    : notifications;
+  const unreadCount = countUnreadNotifications(notifications);
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  // Filter by read/unread status
+  const statusFilteredNotifications = useMemo(() => {
+    return filter === 'unread'
+      ? notifications.filter((n) => !n.read)
+      : notifications;
+  }, [notifications, filter]);
 
-  const handleMarkAllRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, unread: false })));
-  };
+  // Filter by category
+  const filteredNotifications = useMemo(() => {
+    if (selectedCategory === 'all') {
+      return statusFilteredNotifications;
+    }
+
+    const categoryDef = notificationCategories.find(c => c.id === selectedCategory);
+    if (!categoryDef) return statusFilteredNotifications;
+
+    return statusFilteredNotifications.filter(n =>
+      categoryDef.types.includes(n.type)
+    );
+  }, [statusFilteredNotifications, selectedCategory]);
+
+  // Handle notification press
+  const handleNotificationPress = useCallback(
+    (notification: Notification) => {
+      // Mark as read
+      if (!notification.read) {
+        setNotifications((prev) => markAsRead(prev, notification.id));
+      }
+
+      // Navigate based on notification type
+      switch (notification.type) {
+        case 'event':
+          // Navigate to event detail
+          Alert.alert('Navigate', `Opening event: ${notification.content}`);
+          break;
+        case 'message':
+          // Navigate to chat
+          navigation?.navigate?.('Messages');
+          break;
+        case 'connection':
+          // Navigate to profile
+          Alert.alert('Navigate', `Opening profile: ${notification.user.name}`);
+          break;
+        default:
+          Alert.alert('Notification', notification.content);
+      }
+    },
+    [navigation]
+  );
+
+  // Handle mark single as read
+  const handleMarkAsRead = useCallback((notificationId: string) => {
+    setNotifications((prev) => markAsRead(prev, notificationId));
+  }, []);
+
+  // Handle mark all as read
+  const handleMarkAllAsRead = useCallback(() => {
+    setNotifications((prev) => markAllAsRead(prev));
+    Alert.alert('Success', 'All notifications marked as read');
+  }, []);
+
+  // Handle action button press
+  const handleActionPress = useCallback(
+    (notificationId: string, actionType: string) => {
+      const notification = notifications.find((n) => n.id === notificationId);
+      if (!notification) return;
+
+      switch (actionType) {
+        case 'accept':
+          Alert.alert(
+            'Connection Accepted',
+            `You are now connected with ${notification.user.name}`
+          );
+          // Mark as read and remove from list
+          setNotifications((prev) =>
+            prev.map((n) =>
+              n.id === notificationId ? { ...n, read: true, actionable: false } : n
+            )
+          );
+          break;
+        case 'reject':
+          Alert.alert('Connection Rejected', 'Request declined');
+          setNotifications((prev) =>
+            prev.map((n) =>
+              n.id === notificationId ? { ...n, read: true, actionable: false } : n
+            )
+          );
+          break;
+        case 'view':
+          handleNotificationPress(notification);
+          break;
+        case 'reply':
+          navigation?.navigate?.('Chat', {
+            chatId: notification.user.id,
+            chatName: notification.user.name,
+          });
+          break;
+      }
+    },
+    [notifications, navigation, handleNotificationPress]
+  );
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A66C2" translucent={false} />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={['left', 'right', 'bottom']}
+    >
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="#0A66C2"
+        translucent={false}
+      />
 
       {/* Enhanced Header with Gradient */}
       <LinearGradient
@@ -46,21 +175,43 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => navigation?.goBack?.()}
             style={styles.backButton}
             activeOpacity={0.7}
+            accessible={true}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
           >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>Notifications</Text>
+
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              Notifications
+            </Text>
+            {unreadCount > 0 && (
+              <NotificationBadge count={unreadCount} size="small" />
+            )}
+          </View>
+
           <View style={styles.headerRight}>
             {unreadCount > 0 && (
               <TouchableOpacity
                 style={styles.markReadButton}
                 activeOpacity={0.7}
-                onPress={handleMarkAllRead}
+                onPress={handleMarkAllAsRead}
+                accessible={true}
+                accessibilityLabel="Mark all as read"
+                accessibilityRole="button"
               >
                 <Ionicons name="checkmark-done" size={22} color="#FFFFFF" />
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              activeOpacity={0.7}
+              onPress={() => navigation?.navigate?.('NotificationSettings')}
+              accessible={true}
+              accessibilityLabel="Notification settings"
+              accessibilityRole="button"
+            >
               <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
@@ -68,61 +219,77 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
       </LinearGradient>
 
       {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
+      <View
+        style={[
+          styles.filterContainer,
+          {
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.border,
+          },
+        ]}
+      >
         <TouchableOpacity
-          style={[styles.filterTab, filter === 'all' && styles.filterTabActive]}
+          style={[
+            styles.filterTab,
+            filter === 'all' && styles.filterTabActive,
+          ]}
           onPress={() => setFilter('all')}
           activeOpacity={0.7}
+          accessible={true}
+          accessibilityLabel="Show all notifications"
+          accessibilityRole="button"
+          accessibilityState={{ selected: filter === 'all' }}
         >
-          <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
+          <Text
+            style={[
+              styles.filterText,
+              { color: colors.textSecondary },
+              filter === 'all' && styles.filterTextActive,
+            ]}
+          >
             All
           </Text>
         </TouchableOpacity>
+
         <TouchableOpacity
-          style={[styles.filterTab, filter === 'unread' && styles.filterTabActive]}
+          style={[
+            styles.filterTab,
+            filter === 'unread' && styles.filterTabActive,
+          ]}
           onPress={() => setFilter('unread')}
           activeOpacity={0.7}
+          accessible={true}
+          accessibilityLabel={`Show unread notifications, ${unreadCount} unread`}
+          accessibilityRole="button"
+          accessibilityState={{ selected: filter === 'unread' }}
         >
-          <Text style={[styles.filterText, filter === 'unread' && styles.filterTextActive]}>
+          <Text
+            style={[
+              styles.filterText,
+              { color: colors.textSecondary },
+              filter === 'unread' && styles.filterTextActive,
+            ]}
+          >
             Unread {unreadCount > 0 && `(${unreadCount})`}
           </Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {filteredItems.length > 0 ? (
-          <>
-            {filteredItems.map(i => (
-              <NotificationCard
-                key={i.id}
-                type={i.type}
-                title={i.title}
-                description={i.description}
-                time={i.time}
-                unread={i.unread}
-              />
-            ))}
-          </>
-        ) : (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons name="notifications-off-outline" size={64} color={colors.textTertiary} />
-            </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              {filter === 'unread' ? 'All caught up! 🎉' : 'No notifications'}
-            </Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              {filter === 'unread'
-                ? "You don't have any unread notifications"
-                : "You don't have any notifications right now"}
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+      {/* Category Tabs */}
+      <NotificationCategoryTabs
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+        notifications={notifications}
+      />
+
+      {/* Notification List */}
+      <NotificationList
+        notifications={filteredNotifications}
+        loading={loading}
+        onNotificationPress={handleNotificationPress}
+        onMarkAsRead={handleMarkAsRead}
+        onActionPress={handleActionPress}
+      />
     </SafeAreaView>
   );
 };
@@ -130,7 +297,6 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
   },
   headerGradient: {
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
@@ -157,8 +323,13 @@ const styles = StyleSheet.create({
     padding: 4,
     marginRight: 12,
   },
-  headerTitle: {
+  headerCenter: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
@@ -180,9 +351,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
     gap: 12,
   },
   filterTab: {
@@ -197,42 +366,9 @@ const styles = StyleSheet.create({
   filterText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
   },
   filterTextActive: {
     color: '#FFFFFF',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingTop: 8,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 32,
-  },
-  emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#F8F9FA',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
   },
 });
 

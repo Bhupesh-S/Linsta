@@ -35,6 +35,36 @@ export const uploadVideo = async (file: string): Promise<string> => {
   }
 };
 
+// Upload profile image to Cloudinary
+export const uploadProfileImage = async (fileBuffer: Buffer): Promise<string> => {
+  try {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'linsta/profiles',
+          resource_type: 'image',
+          transformation: [
+            { width: 500, height: 500, crop: 'fill', gravity: 'face' },
+            { quality: 'auto' }
+          ]
+        },
+        (error, result) => {
+          if (error) {
+            console.error('Cloudinary profile image upload error:', error);
+            reject(new Error('Failed to upload profile image'));
+          } else {
+            resolve(result!.secure_url);
+          }
+        }
+      );
+      uploadStream.end(fileBuffer);
+    });
+  } catch (error) {
+    console.error('Cloudinary profile image upload error:', error);
+    throw new Error('Failed to upload profile image');
+  }
+};
+
 // Delete media from Cloudinary
 export const deleteMedia = async (publicId: string, resourceType: 'image' | 'video' = 'image'): Promise<void> => {
   try {

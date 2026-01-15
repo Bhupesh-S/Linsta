@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { MediaPickerService, MediaResult } from '../utils/MediaPickerService';
 import BottomNavigation from '../components/BottomNavigation';
 import { useStories } from '../context/StoryContext';
 import { useUser } from '../context/UserContext';
+import { storiesApi } from '../services/stories.api';
 
 interface CreateStoryScreenProps {
   navigation?: any;
@@ -67,13 +68,49 @@ const CreateStoryScreen: React.FC<CreateStoryScreenProps> = ({ navigation }) => 
     setIsLoading(true);
 
     try {
-      // Save story to context
+      console.log('📱 Posting story to backend...');
+      
+      // If there's media, use the media upload API
+      if (mediaUri && mediaType) {
+        const fileName = mediaUri.split('/').pop() || 'media';
+        const mimeType = mediaType === 'video' 
+          ? 'video/mp4' 
+          : 'image/jpeg';
+        
+        console.log('📤 Uploading story with media:', { fileName, mimeType, caption: storyText });
+        
+        await storiesApi.createStoryWithMedia(
+          {
+            uri: mediaUri,
+            type: mimeType,
+            name: fileName,
+          },
+          storyText.trim() || undefined,
+          undefined, // backgroundColor
+          mediaType === 'video' ? 15 : 5 // duration
+        );
+      } else {
+        // Text-only story
+        console.log('📝 Creating text-only story:', storyText);
+        
+        await storiesApi.createStory({
+          mediaUrl: 'text-only', // Placeholder for text-only stories
+          mediaType: 'image',
+          caption: storyText.trim(),
+          backgroundColor: '#0A66C2',
+          duration: 5,
+        });
+      }
+      
+      console.log('✅ Story posted successfully to backend');
+      
+      // Also save to local context for immediate display
       await addStory({
         user: currentUser,
         content: storyText.trim(),
         mediaType: mediaType || undefined,
         mediaUri: mediaUri || undefined,
-        backgroundColor: !mediaUri ? '#0A66C2' : undefined, // Default background if no media
+        backgroundColor: !mediaUri ? '#0A66C2' : undefined,
       });
       
       // Reset form
@@ -84,9 +121,12 @@ const CreateStoryScreen: React.FC<CreateStoryScreenProps> = ({ navigation }) => 
       Alert.alert('Success', 'Story posted!', [
         { text: 'OK', onPress: () => navigation?.navigate('Home') }
       ]);
-    } catch (error) {
-      console.error('Error posting story:', error);
-      Alert.alert('Error', 'Failed to post story. Please try again.');
+    } catch (error: any) {
+      console.error('❌ Error posting story:', error);
+      Alert.alert(
+        'Error', 
+        error.message || 'Failed to post story. Please check your connection and try again.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -225,10 +265,10 @@ const CreateStoryScreen: React.FC<CreateStoryScreenProps> = ({ navigation }) => 
 
         {/* Quick Tips */}
         <View style={styles.tipsContainer}>
-          <Text style={styles.tipsTitle}>≡ƒÆí Quick Tips</Text>
-          <Text style={styles.tipText}>ΓÇó Keep it short and engaging</Text>
-          <Text style={styles.tipText}>ΓÇó Share updates about your work</Text>
-          <Text style={styles.tipText}>ΓÇó Use hashtags to reach more people</Text>
+          <Text style={styles.tipsTitle}>💡 Quick Tips</Text>
+          <Text style={styles.tipText}>• Keep it short and engaging</Text>
+          <Text style={styles.tipText}>• Share updates about your work</Text>
+          <Text style={styles.tipText}>• Use hashtags to reach more people</Text>
         </View>
       </ScrollView>
 

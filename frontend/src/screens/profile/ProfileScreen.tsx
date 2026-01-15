@@ -1,11 +1,13 @@
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert, Image } from 'react-native';
 import { useState, useEffect } from 'react';
 import ScreenWrapper from '../../components/layout/ScreenWrapper';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { TabParamList } from '../../navigation/types';
 import { profileApi, UserProfileResponse } from '../../services/profile.api';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 
 type Props = BottomTabScreenProps<TabParamList, 'Profile'>;
 
@@ -16,13 +18,14 @@ const ProfileScreen = (_: Props) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  
+
   // Edit form state
   const [university, setUniversity] = useState('');
   const [course, setCourse] = useState('');
   const [year, setYear] = useState('');
   const [skillsInput, setSkillsInput] = useState('');
   const [interestsInput, setInterestsInput] = useState('');
+  const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProfile();
@@ -39,10 +42,39 @@ const ProfileScreen = (_: Props) => {
       setYear(data.profile?.year || '');
       setSkillsInput(data.profile?.skills?.join(', ') || '');
       setInterestsInput(data.profile?.interests?.join(', ') || '');
+      // Load existing profile image if available
+      if (data.profile?.profileImageUrl) {
+        setProfileImageUri(data.profile.profileImageUrl);
+      }
     } catch (error) {
       console.error('Failed to fetch profile:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission Required', 'Permission to access camera roll is required!');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setProfileImageUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
     }
   };
 
@@ -63,13 +95,13 @@ const ProfileScreen = (_: Props) => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      
+
       // Convert comma-separated strings to arrays
       const skills = skillsInput
         .split(',')
         .map(s => s.trim())
         .filter(s => s.length > 0);
-      
+
       const interests = interestsInput
         .split(',')
         .map(i => i.trim())
@@ -112,7 +144,7 @@ const ProfileScreen = (_: Props) => {
             Profile
           </Text>
           {!isEditing ? (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.editButton, { backgroundColor: colors.primary }]}
               onPress={handleEdit}
             >
@@ -120,14 +152,14 @@ const ProfileScreen = (_: Props) => {
             </TouchableOpacity>
           ) : (
             <View style={styles.editActions}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.cancelButton, { backgroundColor: colors.textSecondary }]}
                 onPress={handleCancel}
                 disabled={saving}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.saveButton, { backgroundColor: colors.primary }]}
                 onPress={handleSave}
                 disabled={saving}
@@ -143,11 +175,22 @@ const ProfileScreen = (_: Props) => {
         </View>
 
         <View style={styles.userInfo}>
-          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>
-              {profileData?.user?.name?.charAt(0).toUpperCase() || user?.name?.charAt(0).toUpperCase()}
-            </Text>
-          </View>
+          <TouchableOpacity onPress={pickImage} activeOpacity={0.8} disabled={!isEditing}>
+            {profileImageUri ? (
+              <Image source={{ uri: profileImageUri }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+                <Text style={styles.avatarText}>
+                  {profileData?.user?.name?.charAt(0).toUpperCase() || user?.name?.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            {isEditing && (
+              <View style={[styles.editImageBadge, { backgroundColor: colors.primary }]}>
+                <Ionicons name="camera" size={18} color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
           <Text style={[styles.name, { color: colors.text, fontSize: typography.size.lg }]}>
             {profileData?.user?.name || user?.name}
           </Text>
@@ -177,7 +220,7 @@ const ProfileScreen = (_: Props) => {
               </Text>
             )}
           </View>
-          
+
           <View style={styles.detailItem}>
             <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Course</Text>
             {isEditing ? (
@@ -194,7 +237,7 @@ const ProfileScreen = (_: Props) => {
               </Text>
             )}
           </View>
-          
+
           <View style={styles.detailItem}>
             <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Year</Text>
             {isEditing ? (
@@ -265,8 +308,8 @@ const ProfileScreen = (_: Props) => {
           </View>
         </View>
 
-        <TouchableOpacity 
-          style={[styles.logoutButton, { backgroundColor: colors.danger }]} 
+        <TouchableOpacity
+          style={[styles.logoutButton, { backgroundColor: colors.danger }]}
           onPress={logout}
         >
           <Text style={styles.logoutText}>Logout</Text>
@@ -357,6 +400,18 @@ const styles = StyleSheet.create({
   },
   joinDate: {
     marginTop: 5,
+  },
+  editImageBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
   },
   profileDetails: {
     marginBottom: 30,

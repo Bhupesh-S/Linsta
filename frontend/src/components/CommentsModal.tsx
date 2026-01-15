@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -40,14 +40,14 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
     {
       id: '1',
       user: { name: 'Sarah Johnson', avatar: 'person-circle' },
-      text: 'This is amazing! ≡ƒöÑ',
+      text: 'This is amazing! 🔥',
       timestamp: '2h ago',
       likes: 12,
     },
     {
       id: '2',
       user: { name: 'Mike Chen', avatar: 'person-circle' },
-      text: 'Great content! Keep it up ≡ƒæì',
+      text: 'Great content! Keep it up 👍',
       timestamp: '5h ago',
       likes: 8,
     },

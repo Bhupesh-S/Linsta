@@ -7,12 +7,14 @@ import {
   TextInput,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import EventCard from '../../components/EventCard';
 import FilterChip from '../../components/FilterChip';
 import BottomNavigation from '../../components/BottomNavigation';
+import CreateContentModal from '../../components/CreateContentModal';
 import { mockEvents } from '../../utils/eventMockData';
 import { Event, EventCategory } from '../../utils/eventTypes';
 
@@ -24,6 +26,7 @@ const EventsDiscoveryScreen: React.FC<EventsDiscoveryScreenProps> = ({ navigatio
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const categories: EventCategory[] = ['Academic', 'Cultural', 'Sports', 'Networking', 'Workshops'];
   const locations = ['Online', 'San Francisco', 'New York', 'Los Angeles', 'Chicago'];
@@ -55,6 +58,28 @@ const EventsDiscoveryScreen: React.FC<EventsDiscoveryScreenProps> = ({ navigatio
     setSearchQuery('');
     setSelectedCategory(null);
     setSelectedLocation(null);
+  };
+
+  const handleCreatePress = () => {
+    setShowCreateModal(true);
+  };
+
+  const handleCreateStory = () => {
+    Alert.alert('Create Story', 'Story creation coming soon!');
+  };
+
+  const handleCreatePost = () => {
+    Alert.alert('Write Article', 'Article creation coming soon!');
+  };
+
+  const handleCreateEvent = () => {
+    if (navigation) {
+      navigation.navigate('CreateEvent');
+    }
+  };
+
+  const handleCreateReel = () => {
+    Alert.alert('Record Reel', 'Reel recording coming soon!');
   };
 
   return (
@@ -148,7 +173,21 @@ const EventsDiscoveryScreen: React.FC<EventsDiscoveryScreenProps> = ({ navigatio
       />
 
       {/* Bottom Navigation */}
-      <BottomNavigation activeTab="Events" navigation={navigation} />
+      <BottomNavigation 
+        activeTab="Events" 
+        navigation={navigation} 
+        onCreatePress={handleCreatePress}
+      />
+
+      {/* Create Content Modal */}
+      <CreateContentModal
+        visible={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreateStory={handleCreateStory}
+        onCreatePost={handleCreatePost}
+        onCreateEvent={handleCreateEvent}
+        onCreateReel={handleCreateReel}
+      />
     </SafeAreaView>
   );
 };

@@ -1,141 +1,77 @@
+/**
+ * Enhanced MyTicketsScreen
+ * List of all booked tickets with filters and countdown timers
+ */
+
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  Image,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { getMockTickets } from '../../data/mockTickets';
+import { Ticket } from '../../types/ticket.types';
+import {
+  formatEventDate,
+  formatEventTime,
+  formatCountdown,
+  getStatusColor,
+  getStatusLabel,
+  formatCurrency,
+} from '../../utils/ticketUtils';
+import CountdownTimer from '../../components/tickets/CountdownTimer';
 
-type TicketStatus = 'All' | 'Upcoming' | 'Used' | 'Cancelled';
+type FilterType = 'all' | 'upcoming' | 'completed' | 'cancelled';
 
-interface TicketItem {
-  id: string;
-  eventTitle: string;
-  eventId: string;
-  dateTime: string;
-  location: string;
-  status: 'Upcoming' | 'Used' | 'Cancelled';
-  ticketType: string;
-  price: number;
-  qrCode: string;
-  category: string;
-  bannerColor: string;
-  orderNumber: string;
-  purchaseDate: string;
+interface Props {
+  navigation?: any;
 }
-
-const mockTickets: TicketItem[] = [
-  {
-    id: 't1',
-    eventTitle: 'Tech Networking Night',
-    eventId: 'e1',
-    dateTime: 'Jan 20, 2025 • 6:00 PM',
-    location: 'Indiranagar, Bengaluru',
-    status: 'Upcoming',
-    ticketType: 'General Admission',
-    price: 500,
-    qrCode: 'QR-TNN-001',
-    category: 'Networking',
-    bannerColor: '#667eea',
-    orderNumber: 'ORD-2024-001',
-    purchaseDate: 'Dec 15, 2024'
-  },
-  {
-    id: 't2',
-    eventTitle: 'React Native Workshop',
-    eventId: 'e2',
-    dateTime: 'Dec 10, 2024 • 2:00 PM',
-    location: 'Online',
-    status: 'Used',
-    ticketType: 'VIP Pass',
-    price: 1200,
-    qrCode: 'QR-RNW-002',
-    category: 'Workshops',
-    bannerColor: '#f093fb',
-    orderNumber: 'ORD-2024-002',
-    purchaseDate: 'Nov 25, 2024'
-  },
-  {
-    id: 't3',
-    eventTitle: 'Startup Pitch Day',
-    eventId: 'e3',
-    dateTime: 'Nov 12, 2024 • 11:00 AM',
-    location: 'Koramangala, Bengaluru',
-    status: 'Cancelled',
-    ticketType: 'Early Bird',
-    price: 300,
-    qrCode: 'QR-SPD-003',
-    category: 'Networking',
-    bannerColor: '#fa709a',
-    orderNumber: 'ORD-2024-003',
-    purchaseDate: 'Oct 20, 2024'
-  },
-  {
-    id: 't4',
-    eventTitle: 'AI/ML Bootcamp',
-    eventId: 'e4',
-    dateTime: 'Feb 15, 2025 • 10:00 AM',
-    location: 'HSR Layout, Bengaluru',
-    status: 'Upcoming',
-    ticketType: 'Standard',
-    price: 800,
-    qrCode: 'QR-AIB-004',
-    category: 'Workshops',
-    bannerColor: '#4facfe',
-    orderNumber: 'ORD-2024-004',
-    purchaseDate: 'Dec 28, 2024'
-  },
-];
-
-const TABS: TicketStatus[] = ['All', 'Upcoming', 'Used', 'Cancelled'];
-
-interface Props { navigation?: any }
 
 const MyTicketsScreen: React.FC<Props> = ({ navigation }) => {
   const { colors } = useTheme();
-  const [tab, setTab] = useState<TicketStatus>('All');
+  const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTicket, setSelectedTicket] = useState<TicketItem | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [showQRModal, setShowQRModal] = useState(false);
 
-  const filteredTickets = mockTickets.filter((t) => {
-    const matchesTab = tab === 'All' || t.status === tab;
-    const matchesSearch = t.eventTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.category.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTab && matchesSearch;
+  const tickets = getMockTickets();
+
+  const filteredTickets = tickets.filter((t) => {
+    const matchesFilter = filter === 'all' || t.status === filter;
+    const matchesSearch =
+      t.eventName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.eventCategory.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
   });
 
   const stats = {
-    total: mockTickets.length,
-    upcoming: mockTickets.filter(t => t.status === 'Upcoming').length,
-    totalSpent: mockTickets.reduce((sum, t) => sum + t.price, 0),
-    used: mockTickets.filter(t => t.status === 'Used').length,
+    total: tickets.length,
+    upcoming: tickets.filter((t) => t.status === 'upcoming').length,
+    completed: tickets.filter((t) => t.status === 'completed').length,
+    totalSpent: tickets.reduce((sum, t) => sum + t.paymentInfo.totalAmount, 0),
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Upcoming': return '#10b981';
-      case 'Used': return '#6b7280';
-      case 'Cancelled': return '#ef4444';
-      default: return colors.textSecondary;
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Upcoming': return 'time';
-      case 'Used': return 'checkmark-circle';
-      case 'Cancelled': return 'close-circle';
-      default: return 'ellipse';
-    }
-  };
-
-  const showQRCode = (ticket: TicketItem) => {
+  const showQRCode = (ticket: Ticket) => {
     setSelectedTicket(ticket);
     setShowQRModal(true);
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Enhanced Header */}
-      <View style={[styles.headerBar, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+      {/* Header */}
+      <View
+        style={[
+          styles.headerBar,
+          { backgroundColor: colors.background, borderBottomColor: colors.border },
+        ]}
+      >
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation?.goBack?.()}
@@ -149,44 +85,68 @@ const MyTicketsScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Statistics Cards */}
         <View style={styles.statsContainer}>
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.statIconContainer, { backgroundColor: '#e0f2fe' }]}>
               <Ionicons name="ticket-outline" size={24} color="#0284c7" />
             </View>
-            <Text style={[styles.statValue, { color: colors.text }]}>{stats.total}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Tickets</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {stats.total}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              Total Tickets
+            </Text>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.statIconContainer, { backgroundColor: '#dcfce7' }]}>
               <Ionicons name="calendar-outline" size={24} color="#16a34a" />
             </View>
-            <Text style={[styles.statValue, { color: colors.text }]}>{stats.upcoming}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Upcoming</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {stats.upcoming}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              Upcoming
+            </Text>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.statIconContainer, { backgroundColor: '#fef3c7' }]}>
               <Ionicons name="checkmark-done-outline" size={24} color="#ca8a04" />
             </View>
-            <Text style={[styles.statValue, { color: colors.text }]}>{stats.used}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Attended</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {stats.completed}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              Attended
+            </Text>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.statIconContainer, { backgroundColor: '#fce7f3' }]}>
               <Ionicons name="cash-outline" size={24} color="#be185d" />
             </View>
-            <Text style={[styles.statValue, { color: colors.text }]}>₹{(stats.totalSpent / 1000).toFixed(1)}k</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Spent</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {formatCurrency(stats.totalSpent)}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              Total Spent
+            </Text>
           </View>
         </View>
 
         {/* Search Bar */}
-        <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.searchContainer,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
           <Ionicons name="search" size={20} color={colors.textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
@@ -208,26 +168,44 @@ const MyTicketsScreen: React.FC<Props> = ({ navigation }) => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabsContainer}
         >
-          {TABS.map((t) => (
+          {(['all', 'upcoming', 'completed', 'cancelled'] as FilterType[]).map((f) => (
             <TouchableOpacity
-              key={t}
-              onPress={() => setTab(t)}
+              key={f}
+              onPress={() => setFilter(f)}
               style={[
                 styles.tab,
                 {
                   borderColor: colors.border,
-                  backgroundColor: tab === t ? colors.primary : colors.surface
-                }
+                  backgroundColor: filter === f ? colors.primary : colors.surface,
+                },
               ]}
               activeOpacity={0.7}
             >
-              <Text style={[styles.tabText, { color: tab === t ? '#fff' : colors.text }]}>
-                {t}
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: filter === f ? '#fff' : colors.text },
+                ]}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
               </Text>
-              {t !== 'All' && (
-                <View style={[styles.tabBadge, { backgroundColor: tab === t ? 'rgba(255,255,255,0.3)' : colors.border }]}>
-                  <Text style={[styles.tabBadgeText, { color: tab === t ? '#fff' : colors.textSecondary }]}>
-                    {mockTickets.filter(ticket => ticket.status === t).length}
+              {f !== 'all' && (
+                <View
+                  style={[
+                    styles.tabBadge,
+                    {
+                      backgroundColor:
+                        filter === f ? 'rgba(255,255,255,0.3)' : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tabBadgeText,
+                      { color: filter === f ? '#fff' : colors.textSecondary },
+                    ]}
+                  >
+                    {tickets.filter((ticket) => ticket.status === f).length}
                   </Text>
                 </View>
               )}
@@ -240,129 +218,96 @@ const MyTicketsScreen: React.FC<Props> = ({ navigation }) => {
           {filteredTickets.map((ticket) => (
             <TouchableOpacity
               key={ticket.id}
-              style={[styles.ticketCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              style={[
+                styles.ticketCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
               activeOpacity={0.7}
-              onPress={() => navigation?.navigate?.('EventDetail', { eventId: ticket.eventId })}
+              onPress={() =>
+                navigation?.navigate?.('TicketDetail', { ticketId: ticket.id })
+              }
             >
-              {/* Ticket Header */}
-              <View style={[styles.ticketHeader, { backgroundColor: ticket.bannerColor }]}>
-                <View style={styles.ticketHeaderContent}>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(ticket.status) }]}>
-                    <Ionicons name={getStatusIcon(ticket.status) as any} size={12} color="#fff" />
-                    <Text style={styles.statusBadgeText}>{ticket.status}</Text>
-                  </View>
-                  <View style={styles.categoryBadge}>
-                    <Text style={styles.categoryBadgeText}>{ticket.category}</Text>
-                  </View>
-                </View>
-                <View style={styles.ticketNotch} />
-              </View>
+              {/* Event Poster */}
+              <Image source={{ uri: ticket.eventPoster }} style={styles.poster} />
 
               {/* Ticket Content */}
               <View style={styles.ticketContent}>
-                <View style={styles.ticketMainInfo}>
-                  <View style={styles.ticketDetails}>
-                    <Text style={[styles.ticketTitle, { color: colors.text }]} numberOfLines={2}>
-                      {ticket.eventTitle}
-                    </Text>
+                {/* Status Badge */}
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: getStatusColor(ticket.status) },
+                  ]}
+                >
+                  <Text style={styles.statusText}>
+                    {getStatusLabel(ticket.status)}
+                  </Text>
+                </View>
 
-                    <View style={styles.ticketInfo}>
-                      <View style={styles.ticketInfoRow}>
-                        <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
-                        <Text style={[styles.ticketInfoText, { color: colors.textSecondary }]}>
-                          {ticket.dateTime}
-                        </Text>
-                      </View>
-                      <View style={styles.ticketInfoRow}>
-                        <Ionicons name="location-outline" size={16} color={colors.textSecondary} />
-                        <Text style={[styles.ticketInfoText, { color: colors.textSecondary }]} numberOfLines={1}>
-                          {ticket.location}
-                        </Text>
-                      </View>
-                      <View style={styles.ticketInfoRow}>
-                        <Ionicons name="pricetag-outline" size={16} color={colors.textSecondary} />
-                        <Text style={[styles.ticketInfoText, { color: colors.textSecondary }]}>
-                          {ticket.ticketType}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
+                {/* Event Info */}
+                <Text style={[styles.eventTitle, { color: colors.text }]} numberOfLines={2}>
+                  {ticket.eventName}
+                </Text>
+                <Text style={[styles.eventCategory, { color: colors.textSecondary }]}>
+                  {ticket.eventCategory}
+                </Text>
 
-                  {/* QR Code Preview */}
-                  <TouchableOpacity
-                    style={[styles.qrCodePreview, { backgroundColor: colors.background, borderColor: colors.border }]}
-                    onPress={() => showQRCode(ticket)}
-                    disabled={ticket.status === 'Cancelled'}
+                {/* Date & Time */}
+                <View style={styles.infoRow}>
+                  <Ionicons name="calendar" size={16} color={colors.textSecondary} />
+                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    {formatEventDate(ticket.startDate)}
+                  </Text>
+                </View>
+
+                <View style={styles.infoRow}>
+                  <Ionicons name="time" size={16} color={colors.textSecondary} />
+                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    {formatEventTime(ticket.startDate)}
+                  </Text>
+                </View>
+
+                <View style={styles.infoRow}>
+                  <Ionicons name="location" size={16} color={colors.textSecondary} />
+                  <Text
+                    style={[styles.infoText, { color: colors.textSecondary }]}
+                    numberOfLines={1}
                   >
-                    <Ionicons
-                      name="qr-code"
-                      size={48}
-                      color={ticket.status === 'Cancelled' ? colors.textSecondary : colors.text}
-                    />
-                    <Text style={[styles.qrCodeText, { color: colors.textSecondary }]}>
-                      {ticket.status === 'Cancelled' ? 'Invalid' : 'Tap to view'}
-                    </Text>
-                  </TouchableOpacity>
+                    {ticket.venue.name}
+                  </Text>
                 </View>
 
-                {/* Ticket Footer */}
-                <View style={[styles.ticketFooter, { borderTopColor: colors.border }]}>
-                  <View style={styles.ticketFooterItem}>
-                    <Text style={[styles.ticketFooterLabel, { color: colors.textSecondary }]}>Order</Text>
-                    <Text style={[styles.ticketFooterValue, { color: colors.text }]}>{ticket.orderNumber}</Text>
-                  </View>
-                  <View style={styles.ticketFooterItem}>
-                    <Text style={[styles.ticketFooterLabel, { color: colors.textSecondary }]}>Price</Text>
-                    <Text style={[styles.ticketFooterValue, { color: colors.primary }]}>₹{ticket.price}</Text>
-                  </View>
-                  <View style={styles.ticketFooterItem}>
-                    <Text style={[styles.ticketFooterLabel, { color: colors.textSecondary }]}>Purchased</Text>
-                    <Text style={[styles.ticketFooterValue, { color: colors.text }]}>{ticket.purchaseDate}</Text>
-                  </View>
-                </View>
-
-                {/* Action Buttons */}
-                {ticket.status === 'Upcoming' && (
-                  <View style={styles.ticketActions}>
-                    <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: colors.primary }]}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        showQRCode(ticket);
-                      }}
-                    >
-                      <Ionicons name="qr-code-outline" size={18} color="#fff" />
-                      <Text style={styles.actionButtonTextPrimary}>Show QR Code</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.actionButtonSecondary, { backgroundColor: colors.background, borderColor: colors.border }]}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        // Add to calendar functionality
-                      }}
-                    >
-                      <Ionicons name="calendar-outline" size={18} color={colors.text} />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.actionButtonSecondary, { backgroundColor: colors.background, borderColor: colors.border }]}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        // Share functionality
-                      }}
-                    >
-                      <Ionicons name="share-social-outline" size={18} color={colors.text} />
-                    </TouchableOpacity>
+                {/* Countdown Timer for Upcoming Events */}
+                {ticket.status === 'upcoming' && (
+                  <View style={styles.countdownContainer}>
+                    <CountdownTimer startDate={ticket.startDate} compact />
                   </View>
                 )}
-              </View>
 
-              {/* Ticket Perforation */}
-              <View style={styles.ticketPerforation}>
-                {Array.from({ length: 20 }).map((_, i) => (
-                  <View key={i} style={[styles.perforationDot, { backgroundColor: colors.background }]} />
-                ))}
+                {/* Price */}
+                <View style={styles.priceRow}>
+                  <Text style={[styles.priceLabel, { color: colors.textSecondary }]}>
+                    Total Paid
+                  </Text>
+                  <Text style={[styles.priceValue, { color: colors.primary }]}>
+                    {formatCurrency(ticket.paymentInfo.totalAmount)}
+                  </Text>
+                </View>
+
+                {/* QR Code Button for Upcoming */}
+                {ticket.status === 'upcoming' && (
+                  <TouchableOpacity
+                    style={[styles.qrButton, { backgroundColor: colors.primary }]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      showQRCode(ticket);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="qr-code" size={18} color="#FFFFFF" />
+                    <Text style={styles.qrButtonText}>Show QR Code</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </TouchableOpacity>
           ))}
@@ -370,9 +315,9 @@ const MyTicketsScreen: React.FC<Props> = ({ navigation }) => {
           {/* Empty State */}
           {filteredTickets.length === 0 && (
             <View style={[styles.emptyState, { borderColor: colors.border }]}>
-              <Ionicons name="ticket-outline" size={64} color={colors.textSecondary} />
+              <Ionicons name="ticket-outline" size={64} color={colors.textTertiary} />
               <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-                {searchQuery ? 'No tickets found' : `No ${tab.toLowerCase()} tickets`}
+                {searchQuery ? 'No tickets found' : `No ${filter} tickets`}
               </Text>
               <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
                 {searchQuery
@@ -403,7 +348,9 @@ const MyTicketsScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Event Ticket</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                Entry QR Code
+              </Text>
               <TouchableOpacity onPress={() => setShowQRModal(false)}>
                 <Ionicons name="close" size={28} color={colors.text} />
               </TouchableOpacity>
@@ -411,33 +358,30 @@ const MyTicketsScreen: React.FC<Props> = ({ navigation }) => {
 
             {selectedTicket && (
               <>
-                <View style={[styles.qrCodeContainer, { backgroundColor: '#fff' }]}>
+                <View style={styles.qrCodeContainer}>
                   <View style={styles.qrCodePlaceholder}>
                     <Ionicons name="qr-code" size={200} color="#000" />
                   </View>
-                  <Text style={styles.qrCodeId}>{selectedTicket.qrCode}</Text>
+                  <Text style={styles.qrCodeId}>
+                    {selectedTicket.ticketInfo.qrCode}
+                  </Text>
                 </View>
 
                 <View style={styles.modalTicketInfo}>
                   <Text style={[styles.modalEventTitle, { color: colors.text }]}>
-                    {selectedTicket.eventTitle}
+                    {selectedTicket.eventName}
                   </Text>
                   <View style={styles.modalInfoRow}>
                     <Ionicons name="time" size={18} color={colors.textSecondary} />
                     <Text style={[styles.modalInfoText, { color: colors.textSecondary }]}>
-                      {selectedTicket.dateTime}
+                      {formatEventDate(selectedTicket.startDate)} at{' '}
+                      {formatEventTime(selectedTicket.startDate)}
                     </Text>
                   </View>
                   <View style={styles.modalInfoRow}>
                     <Ionicons name="location" size={18} color={colors.textSecondary} />
                     <Text style={[styles.modalInfoText, { color: colors.textSecondary }]}>
-                      {selectedTicket.location}
-                    </Text>
-                  </View>
-                  <View style={styles.modalInfoRow}>
-                    <Ionicons name="pricetag" size={18} color={colors.textSecondary} />
-                    <Text style={[styles.modalInfoText, { color: colors.textSecondary }]}>
-                      {selectedTicket.ticketType} • ₹{selectedTicket.price}
+                      {selectedTicket.venue.name}
                     </Text>
                   </View>
                 </View>
@@ -561,7 +505,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   ticketsContainer: {
-    gap: 20,
+    gap: 16,
   },
   ticketCard: {
     borderRadius: 16,
@@ -573,148 +517,78 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
   },
-  ticketHeader: {
-    height: 80,
-    justifyContent: 'space-between',
-    position: 'relative',
+  poster: {
+    width: '100%',
+    height: 180,
+    backgroundColor: '#E1E8ED',
   },
-  ticketHeaderContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 12,
-  },
-  ticketNotch: {
-    position: 'absolute',
-    bottom: -10,
-    left: '50%',
-    marginLeft: -10,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#fafafa',
+  ticketContent: {
+    padding: 16,
   },
   statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 12,
-    gap: 4,
+    borderRadius: 16,
+    marginBottom: 12,
   },
-  statusBadgeText: {
-    color: '#fff',
+  statusText: {
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
   },
-  categoryBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  categoryBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#262626',
-  },
-  ticketContent: {
-    padding: 16,
-    paddingTop: 20,
-  },
-  ticketMainInfo: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 16,
-  },
-  ticketDetails: {
-    flex: 1,
-  },
-  ticketTitle: {
-    fontSize: 18,
+  eventTitle: {
+    fontSize: 20,
     fontWeight: '700',
-    marginBottom: 12,
-    lineHeight: 24,
-  },
-  ticketInfo: {
-    gap: 8,
-  },
-  ticketInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  ticketInfoText: {
-    fontSize: 14,
-    flex: 1,
-  },
-  qrCodePreview: {
-    width: 90,
-    height: 90,
-    borderRadius: 12,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 8,
-  },
-  qrCodeText: {
-    fontSize: 10,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  ticketFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    marginBottom: 16,
-  },
-  ticketFooterItem: {
-    flex: 1,
-  },
-  ticketFooterLabel: {
-    fontSize: 11,
     marginBottom: 4,
   },
-  ticketFooterValue: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  ticketActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 10,
-    gap: 8,
-  },
-  actionButtonTextPrimary: {
-    color: '#fff',
+  eventCategory: {
     fontSize: 14,
-    fontWeight: '600',
+    marginBottom: 16,
   },
-  actionButtonSecondary: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  ticketPerforation: {
+  infoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 4,
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
   },
-  perforationDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  infoText: {
+    fontSize: 14,
+    flex: 1,
+  },
+  countdownContainer: {
+    marginVertical: 12,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  priceLabel: {
+    fontSize: 14,
+  },
+  priceValue: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  qrButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  qrButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
   emptyState: {
     padding: 48,
@@ -772,6 +646,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   qrCodeContainer: {
+    backgroundColor: '#FFFFFF',
     padding: 24,
     borderRadius: 16,
     alignItems: 'center',
@@ -801,16 +676,16 @@ const styles = StyleSheet.create({
   modalInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   modalInfoText: {
-    fontSize: 15,
+    fontSize: 14,
     flex: 1,
   },
   modalNote: {
-    fontSize: 13,
+    fontSize: 14,
     textAlign: 'center',
-    fontStyle: 'italic',
+    lineHeight: 20,
   },
 });
 

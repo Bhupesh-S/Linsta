@@ -4,6 +4,10 @@ import EventsDiscoveryScreen from '../screens/events/EventsDiscoveryScreen';
 import EventDetailScreen from '../screens/events/EventDetailScreen';
 import CreateEventScreen from '../screens/events/CreateEventScreen';
 import CreatePostScreen from '../screens/posts/CreatePostScreen';
+import CreateContentScreen from '../screens/CreateContentScreen';
+import CreateStoryScreen from '../screens/CreateStoryScreen';
+import CreateArticleScreen from '../screens/CreateArticleScreen';
+import CreateReelScreen from '../screens/CreateReelScreen';
 import { NetworkScreen } from '../screens/NetworkScreen';
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -14,6 +18,8 @@ import { Event } from '../utils/eventTypes';
 import MyTicketsScreen from '../pages/tickets/MyTicketsScreen';
 import TicketDetailScreen from '../pages/tickets/TicketDetailScreen';
 import MyEventsScreen from '../pages/organizer/MyEventsScreen';
+import EventDashboardScreen from '../pages/organizer/EventDashboardScreen';
+import CreateOrganizerEventScreen from '../pages/organizer/CreateEventScreen';
 import AttendeesScreen from '../pages/organizer/AttendeesScreen';
 import RSVPConfirmationScreen from '../pages/rsvp/RSVPConfirmationScreen';
 import RegistrationFormScreen from '../pages/rsvp/RegistrationFormScreen';
@@ -27,6 +33,7 @@ import CommunitiesScreen from '../pages/network/CommunitiesScreen';
 import MessagesListScreen from '../pages/messages/MessagesListScreen';
 import ChatScreen from '../pages/messages/ChatScreen';
 import NotificationsScreen from '../pages/notifications/NotificationsScreen';
+import NotificationSettingsScreen from '../pages/notifications/NotificationSettingsScreen';
 import { UserProvider, useUser } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
 import { UserStatus } from '../types/userTypes';
@@ -42,9 +49,15 @@ type Screen =
   | 'EventDetail'
   | 'CreateEvent'
   | 'CreatePost'
+  | 'CreateContent'
+  | 'CreateStory'
+  | 'CreateArticle'
+  | 'CreateReel'
   | 'MyTickets'
   | 'TicketDetail'
   | 'OrganizerMyEvents'
+  | 'EventDashboard'
+  | 'CreateOrganizerEvent'
   | 'OrganizerAttendees'
   | 'RSVPConfirm'
   | 'RSVPForm'
@@ -57,7 +70,8 @@ type Screen =
   | 'Communities'
   | 'Messages'
   | 'Chat'
-  | 'Notifications';
+  | 'Notifications'
+  | 'NotificationSettings';
 
 type NavEntry = {
   screen: Screen;
@@ -175,13 +189,13 @@ const AppNavigatorInner = () => {
     switch (navState.currentScreen) {
       case 'Splash':
         return <SplashScreen onFinish={handleSplashFinish} />;
-      
+
       case 'Login':
         return <LoginScreen navigation={navigation} onLoginSuccess={handleLoginSuccess} />;
-      
+
       case 'Signup':
         return <SignupScreen navigation={navigation} onSignupSuccess={handleSignupSuccess} />;
-      
+
       case 'OTPVerification':
         return (
           <OTPVerificationScreen
@@ -190,19 +204,19 @@ const AppNavigatorInner = () => {
             onVerificationSuccess={handleOTPVerificationSuccess}
           />
         );
-      
+
       case 'OAuthSelection':
         return <OAuthSelectionScreen navigation={navigation} onOAuthSelect={handleOAuthSelect} />;
-      
+
       case 'Home':
         return <HomeScreen navigation={navigation} />;
-      
+
       case 'Network':
-        return <NetworkScreen />;
-      
+        return <NetworkScreen navigation={navigation} />;
+
       case 'Events':
         return <EventsDiscoveryScreen navigation={navigation} />;
-      
+
       case 'EventDetail':
         return (
           <EventDetailScreen
@@ -210,19 +224,35 @@ const AppNavigatorInner = () => {
             route={{ params: { event: navState.currentParams?.event } }}
           />
         );
-      
+
       case 'CreateEvent':
         return <CreateEventScreen navigation={navigation} />;
       
       case 'CreatePost':
         return <CreatePostScreen navigation={navigation} route={{ params: navState.currentParams }} />;
-      
+
+      case 'CreateContent':
+        return <CreateContentScreen navigation={navigation} />;
+
+      case 'CreateStory':
+        return <CreateStoryScreen navigation={navigation} />;
+
+      case 'CreateArticle':
+        return <CreateArticleScreen navigation={navigation} />;
+
+      case 'CreateReel':
+        return <CreateReelScreen navigation={navigation} />;
+
       case 'MyTickets':
         return <MyTicketsScreen navigation={navigation} />;
       case 'TicketDetail':
-        return <TicketDetailScreen navigation={navigation} />;
+        return <TicketDetailScreen navigation={navigation} route={{ params: navState.currentParams }} />;
       case 'OrganizerMyEvents':
         return <MyEventsScreen navigation={navigation} />;
+      case 'EventDashboard':
+        return <EventDashboardScreen navigation={navigation} route={{ params: navState.currentParams }} />;
+      case 'CreateOrganizerEvent':
+        return <CreateOrganizerEventScreen navigation={navigation} />;
       case 'OrganizerAttendees':
         return <AttendeesScreen navigation={navigation} />;
       case 'RSVPConfirm':
@@ -248,6 +278,8 @@ const AppNavigatorInner = () => {
         return <ChatScreen navigation={navigation} route={{ params: navState.currentParams }} />;
       case 'Notifications':
         return <NotificationsScreen navigation={navigation} />;
+      case 'NotificationSettings':
+        return <NotificationSettingsScreen navigation={navigation} />;
       default:
         return <HomeScreen navigation={navigation} />;
     }

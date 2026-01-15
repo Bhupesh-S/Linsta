@@ -1,4 +1,4 @@
-﻿import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { Alert } from 'react-native';
 
 export interface MediaResult {

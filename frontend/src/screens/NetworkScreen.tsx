@@ -18,10 +18,16 @@ import { UserCard } from '../components/UserCard';
 import { CommunityCard } from '../components/CommunityCard';
 import { ProfilePreviewModal } from '../components/ProfilePreviewModal';
 import { NetworkUser, SearchFilters } from '../types/network.types';
+import BottomNavigation from '../components/BottomNavigation';
+import CreateContentModal from '../components/CreateContentModal';
 
 type TabType = 'feed' | 'connections' | 'suggestions' | 'requests';
 
-export const NetworkScreen = () => {
+interface NetworkScreenProps {
+  navigation?: any;
+}
+
+export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   const {
     suggestions,
     searchResults,
@@ -46,6 +52,7 @@ export const NetworkScreen = () => {
   const [selectedUser, setSelectedUser] = useState<NetworkUser | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showFirstVisitBanner, setShowFirstVisitBanner] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -87,6 +94,28 @@ export const NetworkScreen = () => {
     } catch (err) {
       Alert.alert('Error', 'Failed to reject request');
     }
+  };
+
+  const handleCreatePress = () => {
+    setShowCreateModal(true);
+  };
+
+  const handleCreateStory = () => {
+    Alert.alert('Create Story', 'Story creation coming soon!');
+  };
+
+  const handleCreatePost = () => {
+    Alert.alert('Write Article', 'Article creation coming soon!');
+  };
+
+  const handleCreateEvent = () => {
+    if (navigation) {
+      navigation.navigate('CreateEvent');
+    }
+  };
+
+  const handleCreateReel = () => {
+    Alert.alert('Record Reel', 'Reel recording coming soon!');
   };
 
   const renderTabContent = () => {
@@ -156,23 +185,34 @@ export const NetworkScreen = () => {
         );
 
       case 'connections':
+        const connectedUsers = suggestions.filter(u => u.connectionStatus === 'connected');
         return (
           <View>
-            {suggestions.filter(u => u.connectionStatus === 'connected').map(user => (
-              <UserCard
-                key={user.id}
-                user={user}
-                onConnect={handleConnect}
-                onViewProfile={handleViewProfile}
-              />
-            ))}
+            {connectedUsers.length > 0 ? (
+              connectedUsers.map(user => (
+                <UserCard
+                  key={user.id}
+                  user={user}
+                  onConnect={handleConnect}
+                  onViewProfile={handleViewProfile}
+                />
+              ))
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="people-outline" size={64} color="#d1d5db" />
+                <Text style={styles.emptyText}>No connections yet</Text>
+                <Text style={styles.emptySubtext}>Start connecting with people to build your network</Text>
+              </View>
+            )}
           </View>
         );
 
       case 'feed':
         return (
           <View style={styles.emptyContainer}>
+            <Ionicons name="newspaper-outline" size={64} color="#d1d5db" />
             <Text style={styles.emptyText}>Professional feed coming soon</Text>
+            <Text style={styles.emptySubtext}>Stay tuned for updates from your network</Text>
           </View>
         );
 
@@ -321,6 +361,23 @@ export const NetworkScreen = () => {
         onMessage={handleMessage}
         checkMessagingPermission={checkMessagingPermission}
       />
+
+      {/* Bottom Navigation */}
+      <BottomNavigation 
+        activeTab="Network" 
+        navigation={navigation} 
+        onCreatePress={handleCreatePress}
+      />
+
+      {/* Create Content Modal */}
+      <CreateContentModal
+        visible={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreateStory={handleCreateStory}
+        onCreatePost={handleCreatePost}
+        onCreateEvent={handleCreateEvent}
+        onCreateReel={handleCreateReel}
+      />
     </SafeAreaView>
   );
 };
@@ -458,6 +515,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingHorizontal: 16,
     paddingVertical: 16,
+    paddingBottom: 100, // Increased to account for fixed bottom navigation
   },
   loadingContainer: {
     flex: 1,
@@ -470,7 +528,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#6b7280',
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9ca3af',
+    marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
   errorContainer: {
     backgroundColor: '#fef2f2',

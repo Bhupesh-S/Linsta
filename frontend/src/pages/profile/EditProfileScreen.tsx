@@ -7,9 +7,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi, UserProfileResponse } from '../../services/profile.api';
@@ -29,6 +31,7 @@ const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [year, setYear] = useState('');
   const [skillsInput, setSkillsInput] = useState('');
   const [interestsInput, setInterestsInput] = useState('');
+  const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProfile();
@@ -45,6 +48,10 @@ const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
       setYear(data.profile?.year || '');
       setSkillsInput(data.profile?.skills?.join(', ') || '');
       setInterestsInput(data.profile?.interests?.join(', ') || '');
+      // Load existing profile image if available
+      if (data.profile?.profileImageUrl) {
+        setProfileImageUri(data.profile.profileImageUrl);
+      }
     } catch (error) {
       console.error('Failed to fetch profile:', error);
       Alert.alert('Error', 'Failed to load profile data');
@@ -53,16 +60,48 @@ const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const pickImage = async () => {
+    try {
+      // Request permission
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission Required', 'Permission to access camera roll is required!');
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setProfileImageUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
   const onSave = async () => {
     try {
       setSaving(true);
-      
+
+      // Upload profile image first if selected
+      if (profileImageUri) {
+        await profileApi.uploadProfileImage(profileImageUri);
+      }
+
       // Convert comma-separated strings to arrays
       const skills = skillsInput
         .split(',')
         .map(s => s.trim())
         .filter(s => s.length > 0);
-      
+
       const interests = interestsInput
         .split(',')
         .map(i => i.trim())
@@ -139,17 +178,38 @@ const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Profile Image Section */}
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            <Ionicons name="image-outline" size={18} color={colors.text} /> Profile Picture
+          </Text>
+          <View style={styles.imageContainer}>
+            <TouchableOpacity onPress={pickImage} activeOpacity={0.7}>
+              {profileImageUri ? (
+                <Image source={{ uri: profileImageUri }} style={styles.profileImage} />
+              ) : (
+                <View style={[styles.profileImage, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.avatarText}>
+                    {user?.name?.charAt(0).toUpperCase() || 'U'}
+                  </Text>
+                </View>
+              )}
+              <View style={[styles.editBadge, { backgroundColor: colors.primary }]}>
+                <Ionicons name="camera" size={20} color="#fff" />
+              </View>
+            </TouchableOpacity>
+            <Text style={[styles.imageHint, { color: colors.textSecondary }]}>
+              Tap to change profile picture
+            </Text>
+          </View>
+        </View>
+
         {/* User Info (Read-only) */}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             <Ionicons name="person-outline" size={18} color={colors.text} /> Account Information
           </Text>
           <View style={[styles.infoCard, { backgroundColor: colors.background }]}>
-            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-              <Text style={styles.avatarText}>
-                {user?.name?.charAt(0).toUpperCase() || 'U'}
-              </Text>
-            </View>
             <View style={styles.userDetails}>
               <Text style={[styles.userName, { color: colors.text }]}>{user?.name}</Text>
               <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user?.email}</Text>
@@ -242,7 +302,7 @@ const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
           onPress={onSave}
           disabled={saving}
           style={[
-            styles.saveButtonLarge, 
+            styles.saveButtonLarge,
             { backgroundColor: saving ? colors.textSecondary : colors.primary }
           ]}
         >
@@ -318,19 +378,40 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 16,
   },
+  imageContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  profileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  imageHint: {
+    marginTop: 12,
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     borderRadius: 12,
     gap: 16,
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   avatarText: {
     fontSize: 24,

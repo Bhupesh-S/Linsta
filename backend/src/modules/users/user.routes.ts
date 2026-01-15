@@ -1,6 +1,8 @@
 // User routes
 import { Router, Request, Response } from "express";
 import { authMiddleware } from "../../middlewares/auth.middleware";
+import { upload } from "../../middlewares/upload.middleware";
+import { uploadProfileImage } from "../../config/cloudinary";
 import { User } from "./user.model";
 import { UserProfile } from "./profile.model";
 
@@ -72,6 +74,50 @@ router.put("/profile", authMiddleware, async (req: Request, res: Response): Prom
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/users/profile/image - Upload profile image
+router.post("/profile/image", authMiddleware, upload.single('profileImage'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId;
+
+    console.log('📸 Profile image upload request received');
+    console.log('Request body:', req.body);
+    console.log('Request file:', req.file);
+    console.log('Request files:', (req as any).files);
+
+    if (!req.file) {
+      console.error('❌ No file received in request');
+      res.status(400).json({ error: "No image file provided" });
+      return;
+    }
+
+    // Upload to Cloudinary
+    const imageUrl = await uploadProfileImage(req.file.buffer);
+
+    // Update profile with image URL
+    const profile = await UserProfile.findOneAndUpdate(
+      { userId },
+      { profileImageUrl: imageUrl },
+      { new: true, upsert: true }
+    );
+
+    // Fetch user data
+    const user = await User.findById(userId).select("-password");
+
+    res.status(200).json({
+      user: {
+        id: user?._id,
+        name: user?.name,
+        email: user?.email,
+        createdAt: user?.createdAt,
+      },
+      profile,
+    });
+  } catch (error: any) {
+    console.error('Profile image upload error:', error);
+    res.status(500).json({ error: error.message || 'Failed to upload profile image' });
   }
 });
 

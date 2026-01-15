@@ -100,6 +100,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation, username = 'johndoe' }) =>
           name={profileData?.user?.name || user?.name || 'User'}
           headline={profileData?.profile?.course || 'Student'}
           location={profileData?.profile?.university || 'University not set'}
+          photoUrl={profileData?.profile?.profileImageUrl}
           relation="Edit"
           onActionPress={() => navigation?.navigate?.('ProfileEdit')}
         />
@@ -125,9 +126,9 @@ const ProfileScreen: React.FC<Props> = ({ navigation, username = 'johndoe' }) =>
         {profileData?.profile?.university && (
           <>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Education</Text>
-            <ExperienceCard 
-              company={profileData.profile.university} 
-              role={profileData.profile.course || 'Student'} 
+            <ExperienceCard
+              company={profileData.profile.university}
+              role={profileData.profile.course || 'Student'}
               duration={profileData.profile.year || 'Current'}
             />
           </>
@@ -152,7 +153,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation, username = 'johndoe' }) =>
         ]} />
 
         {/* Logout Button */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.logoutButton, { backgroundColor: colors.background, borderColor: colors.border }]}
           onPress={handleLogout}
           activeOpacity={0.7}

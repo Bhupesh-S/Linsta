@@ -42,8 +42,32 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated, onPostDeleted 
   const content = isBackendPost ? (post as BackendPost).caption : (post as Post).content;
   const timestamp = isBackendPost ? new Date((post as BackendPost).createdAt).toLocaleDateString() : (post as Post).timestamp;
   const postId = isBackendPost ? (post as BackendPost)._id : (post as Post).id;
-  const authorId = isBackendPost ? (post as BackendPost).authorId : null;
+  
+  // Extract authorId - handle both string and object cases
+  let authorId: string | null = null;
+  if (isBackendPost) {
+    const backendPost = post as BackendPost;
+    // Check if authorId is a string or an object
+    if (typeof backendPost.authorId === 'string') {
+      authorId = backendPost.authorId;
+    } else if (backendPost.author?._id) {
+      // If it's populated, use author._id
+      authorId = backendPost.author._id;
+    }
+  }
+  
   const isOwner = isBackendPost && user && authorId === user.id;
+
+  // Debug: Log ownership check
+  if (isBackendPost) {
+    console.log('🔒 Ownership check:', {
+      postId,
+      authorId,
+      userId: user?.id,
+      isOwner,
+      match: authorId === user?.id
+    });
+  }
 
   const handleLike = async () => {
     if (!isBackendPost || isLiking) return;

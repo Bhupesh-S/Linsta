@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Video, AVPlaybackStatus } from 'expo-av';
 import { UserStories, storiesApi } from '../services/stories.api';
 
 const { width, height } = Dimensions.get('screen');
@@ -35,6 +36,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const [isLiked, setIsLiked] = useState(false);
   const [comment, setComment] = useState('');
   const [showCommentInput, setShowCommentInput] = useState(false);
+  const videoRef = useRef<Video>(null);
 
   const currentUserStory = stories[currentUserIndex];
   const currentStory = currentUserStory?.stories[currentStoryIndex];
@@ -52,7 +54,19 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
       startProgress();
       // Mark story as viewed
       markStoryAsViewed();
+      
+      // Play video if it's a video story
+      if (currentStory.mediaType === 'video' && videoRef.current) {
+        videoRef.current.playAsync();
+      }
     }
+    
+    return () => {
+      // Pause video when leaving
+      if (videoRef.current) {
+        videoRef.current.pauseAsync();
+      }
+    };
   }, [currentUserIndex, currentStoryIndex, visible]);
 
   const markStoryAsViewed = async () => {
@@ -166,7 +180,21 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
           </View>
 
           {/* Story Content - Image or Video */}
-          {currentStory.mediaType === 'image' && currentStory.mediaUrl ? (
+          {currentStory.mediaType === 'video' && currentStory.mediaUrl ? (
+            <Video
+              ref={videoRef}
+              source={{ uri: currentStory.mediaUrl }}
+              style={styles.storyVideo}
+              resizeMode="contain"
+              shouldPlay={visible}
+              isLooping={false}
+              onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
+                if (status.isLoaded && status.didJustFinish) {
+                  handleNext();
+                }
+              }}
+            />
+          ) : currentStory.mediaType === 'image' && currentStory.mediaUrl ? (
             <Image
               source={{ uri: currentStory.mediaUrl }}
               style={styles.storyImage}
@@ -385,6 +413,14 @@ const styles = StyleSheet.create({
     left: 0,
     width: width,
     height: height,
+  },
+  storyVideo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: width,
+    height: height,
+    backgroundColor: '#000',
   },
   navigationContainer: {
     position: 'absolute',

@@ -17,10 +17,10 @@ const getCommonUrls = (): string[] => {
   }
   
   const urls = [
-    'http://192.168.28.61:5000',    // Your PC's Wi-Fi IP (Primary)
+    'http://192.168.43.114:5000',   // Your PC's Current Wi-Fi IP (PRIMARY) ⭐
+    'http://192.168.28.61:5000',    // Alternative Wi-Fi IP
     'http://192.168.56.1:5000',     // Your PC's Ethernet IP
     'http://10.0.2.2:5000',         // Android emulator
-    'http://192.168.43.114:5000',   // Alternative Wi-Fi IP
     'http://localhost:5000',        // Localhost/iOS simulator
   ];
   

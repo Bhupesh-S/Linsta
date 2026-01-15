@@ -14,8 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import BottomNavigation from '../components/BottomNavigation';
 import { MediaPickerService } from '../utils/MediaPickerService';
-import { useArticles } from '../context/ArticleContext';
-import { useUser } from '../context/UserContext';
+import { postsApi } from '../services/posts.api';
+import { useAuth } from '../context/AuthContext';
 
 interface CreateArticleScreenProps {
   navigation?: any;
@@ -30,21 +30,12 @@ interface ArticleData {
 }
 
 const CreateArticleScreen: React.FC<CreateArticleScreenProps> = ({ navigation }) => {
-  const { addArticle } = useArticles();
-  const { userState } = useUser();
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [coverImageUri, setCoverImageUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Get current user data from UserContext
-  const currentUser = {
-    id: userState.profile?.id || 'current_user',
-    name: userState.profile?.fullName || 'User',
-    title: userState.profile?.title || '',
-    avatar: 'person-circle',
-  };
 
   const extractTags = (text: string): string[] => {
     const tagRegex = /#[\w]+/g;
@@ -78,24 +69,28 @@ const CreateArticleScreen: React.FC<CreateArticleScreenProps> = ({ navigation })
     setIsLoading(true);
 
     try {
-      // Don't save drafts to feed, only published articles
-      if (!isDraft) {
-        console.log('[CreateArticleScreen] Publishing article...');
-        console.log('[CreateArticleScreen] Article data:', {
-          user: currentUser,
-          title: title.trim(),
-          content: content.trim(),
-          coverImage: coverImageUri || undefined,
-        });
-        await addArticle({
-          user: currentUser,
-          title: title.trim(),
-          content: content.trim(),
-          coverImage: coverImageUri || undefined,
-        });
-        console.log('[CreateArticleScreen] Article published successfully');
+      // Extract hashtags from title and content
+      const detectedTags = extractTags(content);
+      
+      // Format article as a post caption with title and content
+      const articleCaption = `📝 ${title}\n\n${content}`;
+      
+      console.log('📝 Publishing article to backend...');
+      
+      if (coverImageUri) {
+        // Upload article with cover image
+        const mediaFiles = [{
+          uri: coverImageUri,
+          type: 'image' as const,
+          name: 'article_cover.jpg'
+        }];
+        
+        await postsApi.createPostWithMedia(articleCaption, mediaFiles);
+        console.log('✅ Article with image published successfully');
       } else {
-        console.log('[CreateArticleScreen] Saving as draft (not added to feed)');
+        // Upload article without image
+        await postsApi.createPost({ caption: articleCaption });
+        console.log('✅ Article published successfully');
       }
       
       // Reset form
@@ -109,9 +104,9 @@ const CreateArticleScreen: React.FC<CreateArticleScreenProps> = ({ navigation })
         isDraft ? 'Article saved as draft!' : 'Article published!', 
         [{ text: 'OK', onPress: () => navigation?.navigate('Home') }]
       );
-    } catch (error) {
-      console.error('Error publishing article:', error);
-      Alert.alert('Error', 'Failed to publish article. Please try again.');
+    } catch (error: any) {
+      console.error('❌ Error publishing article:', error);
+      Alert.alert('Error', error.message || 'Failed to publish article. Please try again.');
     } finally {
       setIsLoading(false);
     }

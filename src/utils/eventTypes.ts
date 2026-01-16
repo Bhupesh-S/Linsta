@@ -27,8 +27,6 @@ export interface Event {
   maxAttendees?: number;
   isBookmarked?: boolean;
   hasRSVPd?: boolean;
-  imageUrl?: string;
-  ticketType?: 'Free' | 'Paid';
 }
 
 export interface EventFilter {

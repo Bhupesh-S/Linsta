@@ -28,12 +28,6 @@ export const StoryProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const stories: Story[] = JSON.parse(storiesJson);
         // Filter out expired stories
         const validStories = stories.filter(story => !isStoryExpired(story));
-        // Sort by timestamp (oldest to newest)
-        validStories.sort((a, b) => {
-          const timeA = new Date(a.timestamp).getTime();
-          const timeB = new Date(b.timestamp).getTime();
-          return timeA - timeB; // Ascending order
-        });
         setUserStories(validStories);
         // Save back the filtered stories
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(validStories));
@@ -66,7 +60,7 @@ export const StoryProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         isOwn: true,
       };
 
-      const updatedStories = [...userStories, newStory]; // Append to end
+      const updatedStories = [newStory, ...userStories];
       setUserStories(updatedStories);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedStories));
     } catch (error) {

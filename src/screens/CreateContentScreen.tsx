@@ -56,8 +56,8 @@ const CreateContentScreen: React.FC<CreateContentScreenProps> = ({ navigation })
     {
       id: 'reel',
       icon: 'videocam',
-      label: 'Share Reel',
-      description: 'A short video',
+      label: 'Record Reel',
+      description: 'Share a short video',
       gradient: ['#EC4899', '#F472B6'] as const,
       onPress: () => {
         if (navigation) {
@@ -75,7 +75,7 @@ const CreateContentScreen: React.FC<CreateContentScreenProps> = ({ navigation })
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation?.navigate('Home')}
+          onPress={() => navigation?.goBack()}
         >
           <Ionicons name="close" size={28} color="#262626" />
         </TouchableOpacity>

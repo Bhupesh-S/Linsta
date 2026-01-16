@@ -32,6 +32,7 @@ interface UserContextType {
     const checkAuthToken = async () => {
       // TODO: Check AsyncStorage for auth token
       // For now, assume logged out
+      console.log('Checking auth token...');
     };
 
   const login = async (email: string, password: string) => {

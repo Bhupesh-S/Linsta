@@ -26,7 +26,7 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({
   onYourStoryPress 
 }) => {
   const hasUserStories = userStories.length > 0;
-  const latestUserStory = hasUserStories ? userStories[userStories.length - 1] : null;
+  const latestUserStory = hasUserStories ? userStories[0] : null;
 
   return (
     <View style={styles.container}>
@@ -58,7 +58,7 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({
             </View>
             {!hasUserStories && (
               <View style={styles.addIconBadge}>
-                <Ionicons name="add" size={20} color="#FFFFFF" />
+                <Ionicons name="add-circle" size={24} color="#0A66C2" />
               </View>
             )}
           </View>
@@ -93,47 +93,78 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 8,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#DBDBDB',
+    borderBottomColor: '#EFEFEF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
   },
   scrollContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 16,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   storyItem: {
     alignItems: 'center',
-    width: 80,
+    width: 76,
   },
   storyRing: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    padding: 2,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    padding: 3,
+    borderWidth: 2.5,
+    borderColor: '#E1306C',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    position: 'relative',
-    borderWidth: 2,
-    borderColor: '#DBDBDB',
+    marginBottom: 6,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#E1306C',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   activeStoryRing: {
-    borderWidth: 3,
-    borderColor: '#FF6B35', // Red-orange color similar to Instagram
+    borderColor: '#0A66C2',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0A66C2',
+      },
+    }),
   },
   addStoryRing: {
     borderColor: '#DBDBDB',
     borderWidth: 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+      },
+    }),
   },
   storyAvatar: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    backgroundColor: '#FAFAFA',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F8F9FA',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#FFFFFF',
     overflow: 'hidden',
   },
@@ -144,25 +175,23 @@ const styles = StyleSheet.create({
   },
   addIconBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#0A66C2',
-    borderRadius: 14,
-    width: 28,
-    height: 28,
+    bottom: 2,
+    right: 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
   },
   storyName: {
     fontSize: 12,
-    color: '#262626',
-    marginTop: 6,
+    color: '#1D2226',
+    marginTop: 2,
     textAlign: 'center',
-    fontWeight: '400',
-    maxWidth: 80,
+    fontWeight: '500',
   },
 });
 
 export default StoryCarousel;
+

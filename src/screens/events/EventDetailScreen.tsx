@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Share,
-  Image,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Event } from '../../utils/eventTypes';
-import { useEvents } from '../../context/EventContext';
 
 interface EventDetailScreenProps {
   route?: any;
@@ -21,21 +18,8 @@ interface EventDetailScreenProps {
 
 const EventDetailScreen: React.FC<EventDetailScreenProps> = ({ route, navigation }) => {
   const event: Event = route?.params?.event;
-  const { updateEventRSVP, userEvents } = useEvents();
   const [isBookmarked, setIsBookmarked] = useState(event?.isBookmarked || false);
   const [hasRSVPd, setHasRSVPd] = useState(event?.hasRSVPd || false);
-  const [attendeeCount, setAttendeeCount] = useState(event?.attendeeCount || 0);
-
-  // Load persisted state from EventContext on mount
-  useEffect(() => {
-    if (event?.id.startsWith('user_event_')) {
-      const persistedEvent = userEvents.find(e => e.id === event.id);
-      if (persistedEvent) {
-        setHasRSVPd(persistedEvent.hasRSVPd || false);
-        setAttendeeCount(persistedEvent.attendeeCount || 0);
-      }
-    }
-  }, [event?.id, userEvents]);
 
   if (!event) {
     return (
@@ -56,29 +40,8 @@ const EventDetailScreen: React.FC<EventDetailScreenProps> = ({ route, navigation
     return date.toLocaleDateString('en-US', options);
   };
 
-  const handleRSVP = async () => {
-    const newRSVPState = !hasRSVPd;
-    
-    // Check capacity limit when RSVPing (not when un-RSVPing)
-    if (newRSVPState && event.maxAttendees && attendeeCount >= event.maxAttendees) {
-      Alert.alert(
-        'Event Full',
-        `This event has reached its maximum capacity of ${event.maxAttendees} attendees.`,
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-    
-    setHasRSVPd(newRSVPState);
-    
-    // Update attendee count
-    const newAttendeeCount = newRSVPState ? attendeeCount + 1 : attendeeCount - 1;
-    setAttendeeCount(newAttendeeCount);
-    
-    // Persist RSVP state and attendee count if this is a user event
-    if (event.id.startsWith('user_event_')) {
-      await updateEventRSVP(event.id, newRSVPState, newAttendeeCount);
-    }
+  const handleRSVP = () => {
+    setHasRSVPd(!hasRSVPd);
   };
 
   const handleBookmark = () => {
@@ -108,12 +71,8 @@ const EventDetailScreen: React.FC<EventDetailScreenProps> = ({ route, navigation
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Banner */}
-        <View style={[styles.banner, !event.imageUrl && { backgroundColor: event.bannerColor }]}>
-          {event.imageUrl ? (
-            <Image source={{ uri: event.imageUrl }} style={styles.bannerImage} resizeMode="cover" />
-          ) : (
-            <Ionicons name={event.bannerIcon as any} size={80} color="#fff" />
-          )}
+        <View style={[styles.banner, { backgroundColor: event.bannerColor }]}>
+          <Ionicons name={event.bannerIcon as any} size={80} color="#fff" />
         </View>
 
         {/* Content */}
@@ -142,15 +101,12 @@ const EventDetailScreen: React.FC<EventDetailScreenProps> = ({ route, navigation
               onPress={handleRSVP}
             >
               <Ionicons 
-                name={hasRSVPd ? "checkmark-circle" : (event.ticketType === 'Paid' ? 'ticket' : 'calendar')} 
+                name={hasRSVPd ? "checkmark-circle" : "calendar"} 
                 size={20} 
                 color="#fff" 
               />
               <Text style={styles.primaryButtonText}>
-                {hasRSVPd 
-                  ? (event.ticketType === 'Paid' ? 'Booked' : 'RSVP\'d')
-                  : (event.ticketType === 'Paid' ? 'Book Ticket' : 'RSVP')
-                }
+                {hasRSVPd ? 'RSVP\'d' : 'RSVP'}
               </Text>
             </TouchableOpacity>
 
@@ -219,7 +175,7 @@ const EventDetailScreen: React.FC<EventDetailScreenProps> = ({ route, navigation
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Attendees</Text>
                 <Text style={styles.detailValue}>
-                  {attendeeCount.toLocaleString()} attending
+                  {event.attendeeCount.toLocaleString()} attending
                   {event.maxAttendees && ` • ${event.maxAttendees.toLocaleString()} max`}
                 </Text>
               </View>
@@ -264,12 +220,6 @@ const styles = StyleSheet.create({
     height: 200,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
-  },
-  bannerImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
   },
   content: {
     padding: 16,

@@ -1,50 +1,18 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { EventFormData, EventCategory } from '../../utils/eventFormTypes';
-import { MediaPickerService } from '../../utils/MediaPickerService';
 
 interface Props {
   value: EventFormData;
   onChange: (patch: Partial<EventFormData>) => void;
   errors?: Partial<Record<keyof EventFormData, string>>;
-  onNext?: () => void;
-  onPrevious?: () => void;
-  currentStep?: number;
-  totalSteps?: number;
 }
 
 const CATEGORIES: EventCategory[] = ['Conference', 'Workshop', 'Meetup', 'Webinar', 'Networking', 'Festival'];
 
-const BasicInfoStep: React.FC<Props> = ({ value, onChange, errors, onNext, onPrevious, currentStep = 0, totalSteps = 5 }) => {
+const BasicInfoStep: React.FC<Props> = ({ value, onChange, errors }) => {
   const { colors } = useTheme();
-
-  const handleImageUpload = () => {
-    Alert.alert('Upload Cover Image', 'Choose an option', [
-      {
-        text: 'Choose from Gallery',
-        onPress: async () => {
-          const result = await MediaPickerService.pickImage();
-          if (result) {
-            onChange({ coverImageUri: result.uri });
-          }
-        },
-      },
-      {
-        text: 'Take Photo',
-        onPress: async () => {
-          const result = await MediaPickerService.takePhoto();
-          if (result) {
-            onChange({ coverImageUri: result.uri });
-          }
-        },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
-  const isFirstStep = currentStep === 0;
-  const isLastStep = currentStep === totalSteps - 1;
 
   return (
     <View>
@@ -109,45 +77,10 @@ const BasicInfoStep: React.FC<Props> = ({ value, onChange, errors, onNext, onPre
       )}
       <TouchableOpacity
         style={[styles.button, { backgroundColor: colors.card, borderColor: colors.border }]}
-        onPress={handleImageUpload}
+        onPress={() => onChange({ coverImageUri: 'https://picsum.photos/640/360' })}
       >
-        <Text style={{ color: colors.text }}>Upload</Text>
+        <Text style={{ color: colors.text }}>Upload (mock)</Text>
       </TouchableOpacity>
-
-      {/* Navigation Buttons */}
-      {(onPrevious || onNext) && (
-        <View style={styles.navigationContainer}>
-          <TouchableOpacity
-            style={[
-              styles.navButton,
-              { 
-                backgroundColor: isFirstStep ? colors.border : colors.card, 
-                borderColor: colors.border,
-                opacity: isFirstStep ? 0.5 : 1
-              }
-            ]}
-            onPress={onPrevious}
-            disabled={isFirstStep}
-          >
-            <Text style={{ color: isFirstStep ? colors.textSecondary : colors.text, fontWeight: '600' }}>Previous</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[
-              styles.navButton,
-              { 
-                backgroundColor: isLastStep ? colors.border : colors.primary, 
-                borderColor: colors.border,
-                opacity: isLastStep ? 0.5 : 1
-              }
-            ]}
-            onPress={onNext}
-            disabled={isLastStep}
-          >
-            <Text style={{ color: isLastStep ? colors.textSecondary : '#fff', fontWeight: '600' }}>Next</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 };
@@ -162,20 +95,6 @@ const styles = StyleSheet.create({
   coverPlaceholder: { height: 160, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   button: { marginTop: 8, borderWidth: 1, borderRadius: 8, padding: 12, alignItems: 'center' },
   error: { marginTop: 4, fontSize: 12 },
-  navigationContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
-  },
-  navButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });
 
 export default BasicInfoStep;

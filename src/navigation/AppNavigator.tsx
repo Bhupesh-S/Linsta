@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { BackHandler } from 'react-native';
 import HomeScreen from '../screens/home/HomeScreen';
 import EventsDiscoveryScreen from '../screens/events/EventsDiscoveryScreen';
 import EventDetailScreen from '../screens/events/EventDetailScreen';
@@ -8,6 +9,10 @@ import CreateStoryScreen from '../screens/CreateStoryScreen';
 import CreateArticleScreen from '../screens/CreateArticleScreen';
 import CreateReelScreen from '../screens/CreateReelScreen';
 import { NetworkScreen } from '../screens/NetworkScreen';
+import { UserProfileDetailScreen } from '../screens/UserProfileDetailScreen';
+import { JobDetailScreen } from '../screens/JobDetailScreen';
+import CommunityDetailScreen from '../screens/CommunityDetailScreen';
+import CommunitiesListScreen from '../screens/CommunitiesListScreen';
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignupScreen';
@@ -64,6 +69,10 @@ type Screen =
   | 'Profile'
   | 'ProfileEdit'
   | 'Network'
+  | 'UserProfileDetail'
+  | 'JobDetail'
+  | 'CommunityDetail'
+  | 'CommunitiesList'
   | 'Connections'
   | 'Communities'
   | 'Messages'
@@ -117,6 +126,22 @@ const AppNavigatorInner = () => {
       });
     },
   };
+
+  // Handle Android back button
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // If we're on main screens (Home, Login, Splash), exit the app
+      if (navState.currentScreen === 'Home' || navState.currentScreen === 'Login' || navState.currentScreen === 'Splash') {
+        return false; // Let default behavior happen (exit app)
+      }
+      
+      // Otherwise, navigate back in our navigation history
+      navigation.goBack();
+      return true; // Prevent default behavior
+    });
+
+    return () => backHandler.remove();
+  }, [navState.currentScreen, navState.history]);
 
 
 
@@ -194,6 +219,18 @@ const AppNavigatorInner = () => {
 
       case 'Network':
         return <NetworkScreen navigation={navigation} />;
+
+      case 'UserProfileDetail':
+        return <UserProfileDetailScreen navigation={navigation} route={{ params: navState.currentParams }} />;
+
+      case 'JobDetail':
+        return <JobDetailScreen navigation={navigation} route={{ params: navState.currentParams }} />;
+
+      case 'CommunityDetail':
+        return <CommunityDetailScreen navigation={navigation} route={{ params: navState.currentParams }} />;
+
+      case 'CommunitiesList':
+        return <CommunitiesListScreen navigation={navigation} />;
 
       case 'Events':
         return <EventsDiscoveryScreen navigation={navigation} />;

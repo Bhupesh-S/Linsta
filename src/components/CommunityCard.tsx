@@ -9,12 +9,14 @@ interface CommunityCardProps {
   community: Community;
   onJoin: (communityId: string) => Promise<any>;
   onLeave: (communityId: string) => Promise<any>;
+  onViewDetails?: (community: Community) => void;
 }
 
 export const CommunityCard: React.FC<CommunityCardProps> = ({
   community,
   onJoin,
   onLeave,
+  onViewDetails,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -71,6 +73,17 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
           )}
         </TouchableOpacity>
       </View>
+
+      {/* View Details Button */}
+      {onViewDetails && (
+        <TouchableOpacity
+          onPress={() => onViewDetails(community)}
+          style={styles.viewDetailsButton}
+        >
+          <Text style={styles.viewDetailsText}>View Details</Text>
+          <Ionicons name="chevron-forward" size={16} color="#2563eb" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -145,5 +158,18 @@ const styles = StyleSheet.create({
   },
   joinedButtonText: {
     color: '#374151',
+  },
+  viewDetailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    marginTop: 12,
+  },
+  viewDetailsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563eb',
+    marginRight: 4,
   },
 });

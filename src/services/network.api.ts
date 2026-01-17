@@ -85,4 +85,28 @@ export interface NetworkAPI {
    * Get user's network statistics
    */
   getNetworkStats(): Promise<any>;
+
+  /**
+   * POST /network/follow
+   * Follow a user
+   */
+  followUser(userId: string): Promise<any>;
+
+  /**
+   * POST /network/unfollow
+   * Unfollow a user
+   */
+  unfollowUser(userId: string): Promise<any>;
+
+  /**
+   * POST /network/block
+   * Block a user
+   */
+  blockUser(userId: string): Promise<any>;
+
+  /**
+   * POST /network/unblock
+   * Unblock a user
+   */
+  unblockUser(userId: string): Promise<any>;
 }

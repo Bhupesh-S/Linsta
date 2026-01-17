@@ -23,16 +23,14 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onConnect, onViewProfi
     }
   };
 
-  const getConnectionButton = () => {
+  const renderConnectionButton = () => {
+    // For connected users, don't show connection status badge
     if (user.connectionStatus === 'connected') {
-      return (
-        <View style={styles.connectedButton}>
-          <Text style={styles.connectedButtonText}>Connected</Text>
-        </View>
-      );
+      return null;
     }
 
-    if (user.connectionStatus === 'requested') {
+    // Pending - we sent a request
+    if (user.connectionStatus === 'pending') {
       return (
         <View style={styles.pendingButton}>
           <Text style={styles.pendingButtonText}>Pending</Text>
@@ -40,6 +38,16 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onConnect, onViewProfi
       );
     }
 
+    // Requested - they sent us a request
+    if (user.connectionStatus === 'requested') {
+      return (
+        <View style={styles.requestedButton}>
+          <Text style={styles.requestedButtonText}>Respond</Text>
+        </View>
+      );
+    }
+
+    // None state - No relationship, show Connect button
     return (
       <TouchableOpacity
         onPress={handleConnect}
@@ -51,6 +59,31 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onConnect, onViewProfi
         ) : (
           <Text style={styles.connectButtonText}>Connect</Text>
         )}
+      </TouchableOpacity>
+    );
+  };
+
+  const getFollowButton = () => {
+    // Don't show follow button if they sent us a request (we should respond first)
+    if (user.connectionStatus === 'requested') {
+      return null;
+    }
+
+    if (user.isFollowing) {
+      return (
+        <View style={styles.followingButton}>
+          <Text style={styles.followingButtonText}>Following</Text>
+        </View>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        onPress={() => {/* Handle follow */}}
+        style={styles.followButton}
+      >
+        <Ionicons name="add" size={16} color="#2563eb" />
+        <Text style={styles.followButtonText}>Follow</Text>
       </TouchableOpacity>
     );
   };
@@ -89,9 +122,10 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onConnect, onViewProfi
           )}
         </View>
 
-        {/* Connection Button */}
-        <View style={styles.buttonContainer}>
-          {getConnectionButton()}
+        {/* Buttons Container */}
+        <View style={styles.buttonsContainer}>
+          {renderConnectionButton()}
+          {getFollowButton()}
         </View>
       </View>
     </TouchableOpacity>
@@ -161,8 +195,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
   },
-  buttonContainer: {
+  buttonsContainer: {
     marginLeft: 8,
+    gap: 6,
   },
   connectedButton: {
     paddingHorizontal: 16,
@@ -186,6 +221,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2563eb',
   },
+  requestedButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#fef3c7',
+    borderRadius: 20,
+  },
+  requestedButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f59e0b',
+  },
   connectButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -196,5 +242,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
+  },
+  followButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#2563eb',
+    backgroundColor: '#fff',
+    gap: 4,
+  },
+  followButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2563eb',
+  },
+  followingButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 20,
+  },
+  followingButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6b7280',
   },
 });

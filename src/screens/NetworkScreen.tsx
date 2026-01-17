@@ -1,6 +1,6 @@
 // NetworkScreen - Main networking interface
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,18 +10,75 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
+  FlatList,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNetwork } from '../hooks/useNetwork';
 import { UserCard } from '../components/UserCard';
 import { CommunityCard } from '../components/CommunityCard';
 import { ProfilePreviewModal } from '../components/ProfilePreviewModal';
+import { JobCard } from '../components/JobCard';
 import { NetworkUser, SearchFilters } from '../types/network.types';
+import { mockJobs } from '../types/job.types';
 import BottomNavigation from '../components/BottomNavigation';
 import CreateContentModal from '../components/CreateContentModal';
 
-type TabType = 'feed' | 'connections' | 'suggestions' | 'requests';
+type TabType = 'jobs' | 'connections' | 'communities' | 'requests';
+
+interface Community {
+  id: string;
+  name: string;
+  description: string;
+  members: number;
+  category: string;
+  isJoined: boolean;
+}
+
+// Mock communities data
+const mockCommunities: Community[] = [
+  {
+    id: 'c1',
+    name: 'React Native Developers',
+    description: 'A community for React Native developers to share knowledge and collaborate',
+    members: 12500,
+    category: 'Technology',
+    isJoined: true,
+  },
+  {
+    id: 'c2',
+    name: 'IIT Alumni Network',
+    description: 'Connect with fellow IIT graduates from all campuses',
+    members: 45000,
+    category: 'Alumni',
+    isJoined: false,
+  },
+  {
+    id: 'c3',
+    name: 'Startup Founders India',
+    description: 'Network of startup founders and entrepreneurs in India',
+    members: 8900,
+    category: 'Business',
+    isJoined: true,
+  },
+  {
+    id: 'c4',
+    name: 'AI & Machine Learning',
+    description: 'Discuss latest trends in AI, ML, and Deep Learning',
+    members: 23400,
+    category: 'Technology',
+    isJoined: false,
+  },
+  {
+    id: 'c5',
+    name: 'Product Managers India',
+    description: 'Community for product managers to share best practices',
+    members: 15600,
+    category: 'Product',
+    isJoined: false,
+  },
+];
 
 interface NetworkScreenProps {
   navigation?: any;
@@ -30,8 +87,9 @@ interface NetworkScreenProps {
 export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   const {
     suggestions,
+    connections,
     searchResults,
-    communities,
+    communities: networkCommunities,
     requests,
     stats,
     loading,
@@ -43,9 +101,10 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
     joinCommunity,
     leaveCommunity,
     checkMessagingPermission,
+    loadConnections,
   } = useNetwork();
 
-  const [activeTab, setActiveTab] = useState<TabType>('suggestions');
+  const [activeTab, setActiveTab] = useState<TabType>('jobs');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>({});
@@ -53,6 +112,61 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showFirstVisitBanner, setShowFirstVisitBanner] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [jobs, setJobs] = useState(mockJobs);
+  const [communities, setCommunities] = useState(mockCommunities);
+
+  // Load applied jobs state from AsyncStorage on mount
+  useEffect(() => {
+    const loadAppliedJobs = async () => {
+      try {
+        const savedAppliedJobs = await AsyncStorage.getItem('appliedJobs');
+        if (savedAppliedJobs) {
+          const appliedJobIds = JSON.parse(savedAppliedJobs);
+          setJobs(prevJobs => 
+            prevJobs.map(job => ({
+              ...job,
+              userState: {
+                ...job.userState,
+                hasApplied: appliedJobIds.includes(job.id),
+                appliedDate: appliedJobIds.includes(job.id) ? job.userState?.appliedDate : undefined,
+              }
+            }))
+          );
+        }
+      } catch (error) {
+        console.error('Error loading applied jobs:', error);
+      }
+    };
+    loadAppliedJobs();
+  }, []);
+
+  // Load joined communities from AsyncStorage
+  useEffect(() => {
+    const loadJoinedCommunities = async () => {
+      try {
+        const savedJoinedCommunities = await AsyncStorage.getItem('joinedCommunities');
+        if (savedJoinedCommunities) {
+          const joinedCommunityIds = JSON.parse(savedJoinedCommunities);
+          setCommunities(prevCommunities => 
+            prevCommunities.map(community => ({
+              ...community,
+              isJoined: joinedCommunityIds.includes(community.id),
+            }))
+          );
+        }
+      } catch (error) {
+        console.error('Error loading joined communities:', error);
+      }
+    };
+    loadJoinedCommunities();
+  }, []);
+
+  // Load data based on active tab
+  useEffect(() => {
+    if (activeTab === 'connections') {
+      loadConnections();
+    }
+  }, [activeTab, loadConnections]);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -70,8 +184,9 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   };
 
   const handleViewProfile = (user: NetworkUser) => {
-    setSelectedUser(user);
-    setShowProfileModal(true);
+    if (navigation) {
+      navigation.navigate('UserProfileDetail', { user });
+    }
   };
 
   const handleMessage = (userId: string) => {
@@ -118,8 +233,47 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
     Alert.alert('Record Reel', 'Reel recording coming soon!');
   };
 
+  const handleCommunityAction = async (communityId: string, isJoined: boolean) => {
+    // Update communities state
+    setCommunities(prevCommunities => 
+      prevCommunities.map(c => 
+        c.id === communityId 
+          ? { ...c, isJoined: !isJoined }
+          : c
+      )
+    );
+
+    // Save to AsyncStorage
+    try {
+      const savedJoinedCommunities = await AsyncStorage.getItem('joinedCommunities');
+      let joinedCommunityIds = savedJoinedCommunities ? JSON.parse(savedJoinedCommunities) : [];
+      
+      if (isJoined) {
+        // Remove from joined
+        joinedCommunityIds = joinedCommunityIds.filter((id: string) => id !== communityId);
+        Alert.alert('Left', 'You left the community');
+      } else {
+        // Add to joined
+        if (!joinedCommunityIds.includes(communityId)) {
+          joinedCommunityIds.push(communityId);
+        }
+        Alert.alert('Joined', 'You joined the community!');
+      }
+      
+      await AsyncStorage.setItem('joinedCommunities', JSON.stringify(joinedCommunityIds));
+    } catch (error) {
+      console.error('Error saving joined community:', error);
+    }
+  };
+
+  const handleCommunityPress = (community: Community) => {
+    if (navigation) {
+      navigation.navigate('CommunityDetail', { community });
+    }
+  };
+
   const renderTabContent = () => {
-    if (loading && !suggestions.length) {
+    if (loading && !connections.length && activeTab === 'connections') {
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0a66c2" />
@@ -128,20 +282,42 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
     }
 
     switch (activeTab) {
-      case 'suggestions':
+      case 'connections':
         return (
           <View>
-            {suggestions.map(user => (
-              <UserCard
-                key={user.id}
-                user={user}
-                onConnect={handleConnect}
-                onViewProfile={handleViewProfile}
-              />
-            ))}
-            {suggestions.length === 0 && (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No suggestions available</Text>
+            {/* Connected Users */}
+            {connections.length > 0 ? (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionTitle}>Your Connections</Text>
+                {connections.map(user => (
+                  <UserCard
+                    key={user.id}
+                    user={user}
+                    onConnect={handleConnect}
+                    onViewProfile={handleViewProfile}
+                  />
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="people-outline" size={64} color="#d1d5db" />
+                <Text style={styles.emptyStateText}>No connections yet</Text>
+                <Text style={styles.emptyStateSubtext}>Start connecting with people you know</Text>
+              </View>
+            )}
+
+            {/* Suggested Connections */}
+            {suggestions.length > 0 && (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionTitle}>People You May Know</Text>
+                {suggestions.map(user => (
+                  <UserCard
+                    key={user.id}
+                    user={user}
+                    onConnect={handleConnect}
+                    onViewProfile={handleViewProfile}
+                  />
+                ))}
               </View>
             )}
           </View>
@@ -184,35 +360,132 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
           </View>
         );
 
-      case 'connections':
-        const connectedUsers = suggestions.filter(u => u.connectionStatus === 'connected');
+      case 'communities':
         return (
           <View>
-            {connectedUsers.length > 0 ? (
-              connectedUsers.map(user => (
-                <UserCard
-                  key={user.id}
-                  user={user}
-                  onConnect={handleConnect}
-                  onViewProfile={handleViewProfile}
-                />
-              ))
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="people-outline" size={64} color="#d1d5db" />
-                <Text style={styles.emptyText}>No connections yet</Text>
-                <Text style={styles.emptySubtext}>Start connecting with people to build your network</Text>
+            {/* Browse All Communities Button */}
+            <TouchableOpacity 
+              style={styles.browseCommunitiesButton}
+              onPress={() => navigation?.navigate?.('CommunitiesList')}
+            >
+              <View style={styles.browseCommunitiesContent}>
+                <Ionicons name="search-circle" size={32} color="#2563eb" />
+                <View style={styles.browseCommunitiesText}>
+                  <Text style={styles.browseCommunitiesTitle}>Discover More Communities</Text>
+                  <Text style={styles.browseCommunitiesSubtitle}>Browse all available communities</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={24} color="#2563eb" />
               </View>
-            )}
+            </TouchableOpacity>
+
+            {communities.map(community => (
+              <TouchableOpacity 
+                key={community.id} 
+                style={styles.communityCard}
+                onPress={() => handleCommunityPress(community)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.communityHeader}>
+                  <View style={styles.communityIcon}>
+                    <Ionicons name="people" size={32} color="#2563eb" />
+                  </View>
+                  <View style={styles.communityInfo}>
+                    <Text style={styles.communityName} numberOfLines={1}>{community.name}</Text>
+                    <View style={styles.communityMetaRow}>
+                      <Ionicons name="people-outline" size={14} color="#6b7280" />
+                      <Text style={styles.communityMeta}>
+                        {community.members.toLocaleString()} members
+                      </Text>
+                      <Text style={styles.metaDot}>•</Text>
+                      <View style={styles.categoryTag}>
+                        <Text style={styles.categoryTagText}>{community.category}</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+                <Text style={styles.communityDescription} numberOfLines={2}>{community.description}</Text>
+                <View style={styles.communityFooter}>
+                  <TouchableOpacity
+                    style={[
+                      styles.communityButton,
+                      community.isJoined && styles.communityButtonJoined,
+                    ]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleCommunityAction(community.id, community.isJoined);
+                    }}
+                  >
+                    <Ionicons 
+                      name={community.isJoined ? "checkmark-circle" : "add-circle-outline"} 
+                      size={18} 
+                      color={community.isJoined ? "#059669" : "#fff"}
+                      style={styles.buttonIcon}
+                    />
+                    <Text
+                      style={[
+                        styles.communityButtonText,
+                        community.isJoined && styles.communityButtonTextJoined,
+                      ]}
+                    >
+                      {community.isJoined ? 'Joined' : 'Join Community'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.viewDetailsButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleCommunityPress(community);
+                    }}
+                  >
+                    <Text style={styles.viewDetailsText}>View Details</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#2563eb" />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            ))}
           </View>
         );
 
-      case 'feed':
+      case 'jobs':
         return (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="newspaper-outline" size={64} color="#d1d5db" />
-            <Text style={styles.emptyText}>Professional feed coming soon</Text>
-            <Text style={styles.emptySubtext}>Stay tuned for updates from your network</Text>
+          <View>
+            {jobs.map(job => (
+              <JobCard
+                key={job.id}
+                job={job}
+                navigation={navigation}
+                onApply={async (jobId) => {
+                  setJobs(prevJobs => 
+                    prevJobs.map(j => 
+                      j.id === jobId 
+                        ? { 
+                            ...j, 
+                            userState: { 
+                              ...j.userState, 
+                              hasApplied: true, 
+                              appliedDate: new Date().toISOString() 
+                            } 
+                          }
+                        : j
+                    )
+                  );
+                  
+                  // Save to AsyncStorage
+                  try {
+                    const savedAppliedJobs = await AsyncStorage.getItem('appliedJobs');
+                    const appliedJobIds = savedAppliedJobs ? JSON.parse(savedAppliedJobs) : [];
+                    if (!appliedJobIds.includes(jobId)) {
+                      appliedJobIds.push(jobId);
+                      await AsyncStorage.setItem('appliedJobs', JSON.stringify(appliedJobIds));
+                    }
+                  } catch (error) {
+                    console.error('Error saving applied job:', error);
+                  }
+                  
+                  Alert.alert('Success', 'Application submitted successfully!');
+                }}
+              />
+            ))}
           </View>
         );
 
@@ -221,17 +494,13 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
     }
   };
 
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Network</Text>
-          {stats && stats.pendingRequestsCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{stats.pendingRequestsCount}</Text>
-            </View>
-          )}
         </View>
       </View>
 
@@ -253,6 +522,7 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
           </View>
         </View>
       )}
+
 
       {/* Stats */}
       {stats && (
@@ -277,14 +547,19 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
-          {(['feed', 'connections', 'suggestions', 'requests'] as TabType[]).map(tab => (
+          {([
+            { id: 'jobs' as TabType, label: 'Jobs', count: jobs.length },
+            { id: 'connections' as TabType, label: 'Connections', count: stats?.connectionsCount },
+            { id: 'requests' as TabType, label: 'Requests', count: stats?.pendingRequestsCount || 0 },
+            { id: 'communities' as TabType, label: 'Communities', count: communities.length },
+          ]).map(tab => (
             <TouchableOpacity
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              style={[styles.tab, activeTab === tab && styles.activeTab]}
+              key={tab.id}
+              onPress={() => setActiveTab(tab.id)}
+              style={[styles.tab, activeTab === tab.id && styles.activeTab]}
             >
-              <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              <Text style={[styles.tabText, activeTab === tab.id && styles.activeTabText]}>
+                {tab.label} {tab.count !== undefined && tab.count > 0 && `(${tab.count})`}
               </Text>
             </TouchableOpacity>
           ))}
@@ -297,7 +572,13 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
           <Ionicons name="search" size={20} color="#6b7280" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search people..."
+            placeholder={
+              activeTab === 'jobs' ? 'Search jobs...' :
+              activeTab === 'connections' ? 'Search connections...' :
+              activeTab === 'communities' ? 'Search communities...' :
+              activeTab === 'requests' ? 'Search requests...' :
+              'Search...'
+            }
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={handleSearch}
@@ -334,21 +615,6 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
           </View>
         ) : (
           renderTabContent()
-        )}
-
-        {/* Communities Section */}
-        {activeTab === 'suggestions' && !searchQuery && (
-          <View style={styles.communitiesSection}>
-            <Text style={styles.communitiesTitle}>Communities</Text>
-            {communities.map(community => (
-              <CommunityCard
-                key={community.id}
-                community={community}
-                onJoin={joinCommunity}
-                onLeave={leaveCommunity}
-              />
-            ))}
-          </View>
         )}
       </ScrollView>
 
@@ -602,5 +868,169 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#111827',
     marginBottom: 16,
+  },
+  sectionContainer: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginTop: 16,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#9ca3af',
+    marginTop: 8,
+  },
+  browseCommunitiesButton: {
+    backgroundColor: '#eff6ff',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#dbeafe',
+    borderStyle: 'dashed',
+  },
+  browseCommunitiesContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  browseCommunitiesText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  browseCommunitiesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e40af',
+    marginBottom: 2,
+  },
+  browseCommunitiesSubtitle: {
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  communityCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  communityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  communityIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  communityInfo: {
+    flex: 1,
+  },
+  communityName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 6,
+  },
+  communityMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  communityMeta: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginLeft: 4,
+  },
+  metaDot: {
+    fontSize: 13,
+    color: '#d1d5db',
+    marginHorizontal: 6,
+  },
+  categoryTag: {
+    backgroundColor: '#dbeafe',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  categoryTagText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#2563eb',
+  },
+  communityDescription: {
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  communityFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  communityButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563eb',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  communityButtonJoined: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#86efac',
+  },
+  buttonIcon: {
+    marginRight: 6,
+  },
+  communityButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  communityButtonTextJoined: {
+    color: '#059669',
+  },
+  viewDetailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  viewDetailsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563eb',
+    marginRight: 4,
   },
 });

@@ -2,7 +2,8 @@
 // These types define the contract between frontend and backend
 
 export type UserRole = 'student' | 'faculty' | 'organizer';
-export type ConnectionStatus = 'none' | 'requested' | 'connected';
+export type ConnectionStatus = 'none' | 'pending' | 'requested' | 'connected' | 'declined' | 'blocked';
+export type FollowStatus = 'not_following' | 'following' | 'followed_by' | 'mutual';
 
 export interface NetworkUser {
   id: string;
@@ -12,6 +13,8 @@ export interface NetworkUser {
   skills: string[];
   avatarUrl?: string;
   connectionStatus: ConnectionStatus;
+  isFollowing: boolean; // Independent from connection - one-way follow for content
+  followStatus?: FollowStatus; // Deprecated - use isFollowing instead
   location?: string;
   bio?: string;
 }
@@ -36,6 +39,7 @@ export interface ConnectionRequest {
 export interface NetworkStats {
   connectionsCount: number;
   followersCount: number;
+  followingCount: number;
   pendingRequestsCount: number;
 }
 
@@ -97,4 +101,15 @@ export interface CommunityActionResponse {
 export interface PermissionsResponse {
   canMessage: boolean;
   reason?: string;
+}
+
+export interface FollowResponse {
+  success: boolean;
+  message: string;
+  followStatus: FollowStatus;
+}
+
+export interface BlockResponse {
+  success: boolean;
+  message: string;
 }

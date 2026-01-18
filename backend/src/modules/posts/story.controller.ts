@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { Story } from "./story.model";
 import { User } from "../users/user.model";
 import { Types } from "mongoose";
+import notificationService from "../notifications/notification.service";
 
 export class StoryController {
   // Create a new story
@@ -33,6 +34,15 @@ export class StoryController {
         duration: duration || (finalMediaType === 'video' ? 15 : 5),
         expiresAt,
       });
+
+      // Get user info for notification
+      const user = await User.findById(userId).select('name');
+      const userName = user?.name || 'Someone';
+
+      // For now, broadcast to all users (in production, would be followers only)
+      // You can enhance this later to only notify followers
+      // Example: const followers = await getFollowers(userId);
+      // notificationService.createBroadcastNotification(userId, followers, 'NEW_STORY', message, story._id.toString());
 
       res.status(201).json({ story });
     } catch (error: any) {

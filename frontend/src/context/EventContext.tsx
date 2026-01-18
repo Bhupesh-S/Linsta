@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EventFormData } from '../utils/eventFormTypes';
+import { createEvent as createEventApi, uploadEventCoverImage, deleteEvent as deleteEventApi, registerForEvent, cancelRsvp } from '../services/events.api';
 
 export interface UserEvent extends EventFormData {
   id: string;
@@ -14,6 +15,7 @@ export interface UserEvent extends EventFormData {
 interface EventContextType {
   userEvents: UserEvent[];
   addEvent: (eventData: EventFormData) => Promise<void>;
+  deleteEvent: (eventId: string) => Promise<void>;
   saveDraft: (eventData: EventFormData) => Promise<void>;
   getDraft: () => Promise<EventFormData | null>;
   clearDraft: () => Promise<void>;
@@ -53,10 +55,36 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const addEvent = async (eventData: EventFormData) => {
     try {
+      console.log('📅 Creating event via backend API...');
+      
+      // Upload cover image first if provided
+      let coverImageUrl = eventData.coverImageUri;
+      if (eventData.coverImageUri && eventData.coverImageUri.startsWith('file://')) {
+        console.log('📸 Uploading cover image to Cloudinary...');
+        coverImageUrl = await uploadEventCoverImage(eventData.coverImageUri);
+        console.log('✅ Cover image uploaded:', coverImageUrl);
+      }
+      
+      // Create event via backend API
+      const backendEvent = await createEventApi({
+        title: eventData.title,
+        description: eventData.description,
+        category: eventData.category,
+        date: eventData.startDate,
+        time: eventData.startTime,
+        venue: eventData.venueAddress,
+        isOnline: eventData.isOnline,
+        meetingLink: eventData.meetingLink,
+        coverImage: coverImageUrl,
+      });
+      
+      console.log('✅ Event created successfully:', backendEvent._id);
+      
+      // Also store locally for offline access
       const newEvent: UserEvent = {
         ...eventData,
-        id: eventData.id || `user_event_${Date.now()}`,
-        createdAt: new Date().toISOString(),
+        id: backendEvent._id,
+        createdAt: backendEvent.createdAt,
         publishedAt: new Date().toISOString(),
         status: 'published',
       };
@@ -64,8 +92,42 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const updatedEvents = [newEvent, ...userEvents];
       setUserEvents(updatedEvents);
       await AsyncStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(updatedEvents));
-    } catch (error) {
-      console.error('Error adding event:', error);
+      
+      return backendEvent;
+    } catch (error: any) {
+      console.error('❌ Error creating event:', error);
+      
+      // Provide better error message for authentication errors
+      if (error.message && error.message.includes('401')) {
+        throw new Error('Please login to create events. Authentication required.');
+      }
+      
+      throw error;
+    }
+  };
+
+  const deleteEvent = async (eventId: string) => {
+    try {
+      console.log('🗑️ Deleting event:', eventId);
+      
+      // Delete from backend
+      await deleteEventApi(eventId);
+      console.log('✅ Event deleted from backend');
+      
+      // Remove from local state
+      const updatedEvents = userEvents.filter(event => event.id !== eventId);
+      setUserEvents(updatedEvents);
+      await AsyncStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(updatedEvents));
+      
+      console.log('✅ Event removed from local storage');
+    } catch (error: any) {
+      console.error('❌ Error deleting event:', error);
+      
+      // Provide better error messages
+      if (error.message && error.message.includes('Unauthorized')) {
+        throw new Error('Only the event creator can delete this event.');
+      }
+      
       throw error;
     }
   };
@@ -105,6 +167,18 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const updateEventRSVP = async (eventId: string, hasRSVPd: boolean, attendeeCount?: number) => {
     try {
+      console.log(`${hasRSVPd ? '✅' : '❌'} ${hasRSVPd ? 'Registering' : 'Canceling'} RSVP for event ${eventId}...`);
+      
+      // Call backend API to register or cancel RSVP
+      if (hasRSVPd) {
+        await registerForEvent(eventId);
+        console.log('✅ RSVP registered in backend');
+      } else {
+        await cancelRsvp(eventId);
+        console.log('✅ RSVP cancelled in backend');
+      }
+      
+      // Update local state
       const updatedEvents = userEvents.map(event => {
         if (event.id === eventId) {
           const updated: any = { ...event, hasRSVPd };
@@ -117,13 +191,14 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
       setUserEvents(updatedEvents);
       await AsyncStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(updatedEvents));
-    } catch (error) {
-      console.error('Error updating RSVP:', error);
+    } catch (error: any) {
+      console.error('❌ Error updating RSVP:', error);
+      throw error; // Re-throw to let EventDetailScreen handle it
     }
   };
 
   return (
-    <EventContext.Provider value={{ userEvents, addEvent, saveDraft, getDraft, clearDraft, updateEventRSVP }}>
+    <EventContext.Provider value={{ userEvents, addEvent, deleteEvent, saveDraft, getDraft, clearDraft, updateEventRSVP }}>
       {children}
     </EventContext.Provider>
   );

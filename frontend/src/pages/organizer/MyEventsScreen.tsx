@@ -3,7 +3,7 @@
  * Premium organizer events list with modern UI
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,36 +11,68 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
+  RefreshControl,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
-import { getMockOrganizerEvents } from '../../data/mockOrganizerEvents';
+import { getMyEvents } from '../../services/events.api';
 import { EventFilters } from '../../types/organizerEvent.types';
-import { filterEvents, sortEventsByDate, formatRevenue } from '../../utils/organizerEventUtils';
-import EventCard from '../../components/organizer/EventCard';
 
 interface Props {
   navigation?: any;
 }
 
+// Helper function for formatting revenue
+const formatRevenue = (amount: number) => {
+  return `₹${amount.toLocaleString()}`;
+};
+
 const MyEventsScreen: React.FC<Props> = ({ navigation }) => {
   const { colors } = useTheme();
   const [filter, setFilter] = useState<EventFilters['status']>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const allEvents = getMockOrganizerEvents();
-  const filteredEvents = filterEvents(allEvents, filter, searchQuery);
-  const sortedEvents = sortEventsByDate(filteredEvents, 'desc');
+  useEffect(() => {
+    fetchMyEvents();
+  }, []);
+
+  const fetchMyEvents = async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      
+      console.log('📅 Fetching my events...');
+      const myEvents = await getMyEvents();
+      console.log('✅ Fetched', myEvents.length, 'events');
+      setEvents(myEvents);
+    } catch (error) {
+      console.error('❌ Error fetching my events:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Filter events
+  const filteredEvents = events.filter(event => {
+    const matchesSearch = event.title?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
 
   // Calculate stats
   const stats = {
-    total: allEvents.length,
-    upcoming: allEvents.filter((e) => e.status === 'upcoming' || e.status === 'published').length,
-    live: allEvents.filter((e) => e.status === 'live').length,
-    drafts: allEvents.filter((e) => e.status === 'draft').length,
-    totalRevenue: allEvents.reduce((sum, e) => sum + e.revenue.totalRevenue, 0),
-    totalAttendees: allEvents.reduce((sum, e) => sum + e.ticketsSold, 0),
+    total: events.length,
+    upcoming: events.filter((e) => new Date(e.date) > new Date()).length,
+    live: 0,
+    drafts: 0,
+    totalRevenue: 0,
+    totalAttendees: events.reduce((sum, e) => sum + (e.attendeeCount || 0), 0),
   };
 
   const filters: { id: EventFilters['status']; label: string; icon: string; count?: number }[] = [
@@ -103,9 +135,27 @@ const MyEventsScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
-        {/* Search Bar */}
-        <View style={styles.searchSection}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchMyEvents(true)}
+          />
+        }
+      >
+        {loading ? (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={{ color: colors.textSecondary, marginTop: 12 }}>
+              Loading your events...
+            </Text>
+          </View>
+        ) : (
+          <>
+            {/* Search Bar */}
+            <View style={styles.searchSection}>
           <View
             style={[
               styles.searchContainer,
@@ -187,36 +237,71 @@ const MyEventsScreen: React.FC<Props> = ({ navigation }) => {
         {/* Events List */}
         <View style={styles.eventsContainer}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {filter === 'all'
-              ? 'All Events'
-              : filter === 'upcoming'
-                ? 'Upcoming Events'
-                : filter === 'live'
-                  ? 'Live Events'
-                  : filter === 'past'
-                    ? 'Past Events'
-                    : 'Draft Events'}
-            {sortedEvents.length > 0 && (
-              <Text style={{ color: colors.textSecondary }}> ({sortedEvents.length})</Text>
+            All Events
+            {filteredEvents.length > 0 && (
+              <Text style={{ color: colors.textSecondary }}> ({filteredEvents.length})</Text>
             )}
           </Text>
 
-          {sortedEvents.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              onPress={() =>
-                navigation?.navigate?.('EventDashboard', { eventId: event.id })
-              }
-              onEdit={() => navigation?.navigate?.('EditEvent', { eventId: event.id })}
-              onShare={() => {
-                console.log('Share event:', event.id);
-              }}
-            />
+          {filteredEvents.map((event) => (
+            <TouchableOpacity
+              key={event._id}
+              style={[styles.eventCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => navigation?.navigate?.('EventDetail', { eventId: event._id })}
+              activeOpacity={0.7}
+            >
+              {/* Event Cover Image */}
+              {event.coverImage && (
+                <Image 
+                  source={{ uri: event.coverImage }} 
+                  style={styles.eventImage}
+                  resizeMode="cover"
+                />
+              )}
+              
+              {/* Event Content */}
+              <View style={styles.eventContent}>
+                <Text style={[styles.eventTitle, { color: colors.text }]} numberOfLines={2}>
+                  {event.title}
+                </Text>
+                
+                <View style={styles.eventMeta}>
+                  <View style={styles.metaRow}>
+                    <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                      {new Date(event.date).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.metaRow}>
+                    <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {event.isOnline ? 'Online' : event.venue || 'TBD'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.metaRow}>
+                    <Ionicons name="people-outline" size={14} color={colors.primary} />
+                    <Text style={[styles.metaText, { color: colors.primary }]}>
+                      {event.attendeeCount || 0} attendees
+                    </Text>
+                  </View>
+                </View>
+                
+                <View style={styles.eventActions}>
+                  <TouchableOpacity 
+                    style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                    onPress={() => navigation?.navigate?.('EventDetail', { eventId: event._id })}
+                  >
+                    <Text style={styles.actionButtonText}>View Details</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
           ))}
 
           {/* Empty State */}
-          {sortedEvents.length === 0 && (
+          {filteredEvents.length === 0 && (
             <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
               <LinearGradient
                 colors={[colors.primary + '20', colors.primary + '10']}
@@ -265,6 +350,8 @@ const MyEventsScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.bottomSpacing} />
+        </>
+      )}
       </ScrollView>
     </View>
   );
@@ -456,6 +543,58 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 40,
+  },
+  eventCard: {
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  eventImage: {
+    width: '100%',
+    height: 180,
+    backgroundColor: '#f0f0f0',
+  },
+  eventContent: {
+    padding: 16,
+  },
+  eventTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  eventMeta: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  metaText: {
+    fontSize: 14,
+    flex: 1,
+  },
+  eventActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

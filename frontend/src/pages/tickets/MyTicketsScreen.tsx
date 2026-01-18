@@ -3,7 +3,7 @@
  * List of all booked tickets with filters and countdown timers
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,19 +13,13 @@ import {
   TextInput,
   Modal,
   Image,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-import { getMockTickets } from '../../data/mockTickets';
+import { getMyTickets } from '../../services/events.api';
 import { Ticket } from '../../types/ticket.types';
-import {
-  formatEventDate,
-  formatEventTime,
-  formatCountdown,
-  getStatusColor,
-  getStatusLabel,
-  formatCurrency,
-} from '../../utils/ticketUtils';
 import CountdownTimer from '../../components/tickets/CountdownTimer';
 
 type FilterType = 'all' | 'upcoming' | 'completed' | 'cancelled';
@@ -34,28 +28,52 @@ interface Props {
   navigation?: any;
 }
 
+// Helper function for formatting currency
+const formatCurrency = (amount: number) => {
+  return `₹${amount.toLocaleString()}`;
+};
+
 const MyTicketsScreen: React.FC<Props> = ({ navigation }) => {
   const { colors } = useTheme();
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const tickets = getMockTickets();
+  useEffect(() => {
+    fetchMyTickets();
+  }, []);
+
+  const fetchMyTickets = async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      
+      console.log('🎟️ Fetching my tickets...');
+      const myTickets = await getMyTickets();
+      console.log('✅ Fetched', myTickets.length, 'tickets');
+      setTickets(myTickets);
+    } catch (error) {
+      console.error('❌ Error fetching my tickets:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   const filteredTickets = tickets.filter((t) => {
-    const matchesFilter = filter === 'all' || t.status === filter;
-    const matchesSearch =
-      t.eventName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.eventCategory.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
+    const matchesSearch = t.title?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
   });
 
   const stats = {
     total: tickets.length,
-    upcoming: tickets.filter((t) => t.status === 'upcoming').length,
-    completed: tickets.filter((t) => t.status === 'completed').length,
-    totalSpent: tickets.reduce((sum, t) => sum + t.paymentInfo.totalAmount, 0),
+    upcoming: tickets.filter((t) => new Date(t.date) > new Date()).length,
+    completed: tickets.filter((t) => new Date(t.date) <= new Date()).length,
+    totalSpent: 0,
   };
 
   const showQRCode = (ticket: Ticket) => {
@@ -88,9 +106,24 @@ const MyTicketsScreen: React.FC<Props> = ({ navigation }) => {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchMyTickets(true)}
+          />
+        }
       >
-        {/* Statistics Cards */}
-        <View style={styles.statsContainer}>
+        {loading ? (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={{ color: colors.textSecondary, marginTop: 12 }}>
+              Loading your tickets...
+            </Text>
+          </View>
+        ) : (
+          <>
+            {/* Statistics Cards */}
+            <View style={styles.statsContainer}>
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.statIconContainer, { backgroundColor: '#e0f2fe' }]}>
               <Ionicons name="ticket-outline" size={24} color="#0284c7" />
@@ -217,18 +250,20 @@ const MyTicketsScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.ticketsContainer}>
           {filteredTickets.map((ticket) => (
             <TouchableOpacity
-              key={ticket.id}
+              key={ticket._id}
               style={[
                 styles.ticketCard,
                 { backgroundColor: colors.surface, borderColor: colors.border },
               ]}
               activeOpacity={0.7}
               onPress={() =>
-                navigation?.navigate?.('TicketDetail', { ticketId: ticket.id })
+                navigation?.navigate?.('EventDetail', { eventId: ticket._id })
               }
             >
               {/* Event Poster */}
-              <Image source={{ uri: ticket.eventPoster }} style={styles.poster} />
+              {ticket.coverImage && (
+                <Image source={{ uri: ticket.coverImage }} style={styles.poster} />
+              )}
 
               {/* Ticket Content */}
               <View style={styles.ticketContent}>
@@ -236,34 +271,34 @@ const MyTicketsScreen: React.FC<Props> = ({ navigation }) => {
                 <View
                   style={[
                     styles.statusBadge,
-                    { backgroundColor: getStatusColor(ticket.status) },
+                    { backgroundColor: new Date(ticket.date) > new Date() ? '#dcfce7' : '#fef3c7' },
                   ]}
                 >
                   <Text style={styles.statusText}>
-                    {getStatusLabel(ticket.status)}
+                    {new Date(ticket.date) > new Date() ? 'Upcoming' : 'Completed'}
                   </Text>
                 </View>
 
                 {/* Event Info */}
                 <Text style={[styles.eventTitle, { color: colors.text }]} numberOfLines={2}>
-                  {ticket.eventName}
+                  {ticket.title}
                 </Text>
                 <Text style={[styles.eventCategory, { color: colors.textSecondary }]}>
-                  {ticket.eventCategory}
+                  {ticket.category}
                 </Text>
 
                 {/* Date & Time */}
                 <View style={styles.infoRow}>
                   <Ionicons name="calendar" size={16} color={colors.textSecondary} />
                   <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                    {formatEventDate(ticket.startDate)}
+                    {new Date(ticket.date).toLocaleDateString()}
                   </Text>
                 </View>
 
                 <View style={styles.infoRow}>
                   <Ionicons name="time" size={16} color={colors.textSecondary} />
                   <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                    {formatEventTime(ticket.startDate)}
+                    {ticket.time || 'TBD'}
                   </Text>
                 </View>
 
@@ -273,40 +308,20 @@ const MyTicketsScreen: React.FC<Props> = ({ navigation }) => {
                     style={[styles.infoText, { color: colors.textSecondary }]}
                     numberOfLines={1}
                   >
-                    {ticket.venue.name}
+                    {ticket.isOnline ? 'Online Event' : ticket.venue || 'Venue TBD'}
                   </Text>
                 </View>
 
-                {/* Countdown Timer for Upcoming Events */}
-                {ticket.status === 'upcoming' && (
-                  <View style={styles.countdownContainer}>
-                    <CountdownTimer startDate={ticket.startDate} compact />
+                {/* RSVP Date */}
+                {ticket.rsvpDate && (
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.priceLabel, { color: colors.textSecondary }]}>
+                      Registered on
+                    </Text>
+                    <Text style={[styles.priceValue, { color: colors.primary }]}>
+                      {new Date(ticket.rsvpDate).toLocaleDateString()}
+                    </Text>
                   </View>
-                )}
-
-                {/* Price */}
-                <View style={styles.priceRow}>
-                  <Text style={[styles.priceLabel, { color: colors.textSecondary }]}>
-                    Total Paid
-                  </Text>
-                  <Text style={[styles.priceValue, { color: colors.primary }]}>
-                    {formatCurrency(ticket.paymentInfo.totalAmount)}
-                  </Text>
-                </View>
-
-                {/* QR Code Button for Upcoming */}
-                {ticket.status === 'upcoming' && (
-                  <TouchableOpacity
-                    style={[styles.qrButton, { backgroundColor: colors.primary }]}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      showQRCode(ticket);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="qr-code" size={18} color="#FFFFFF" />
-                    <Text style={styles.qrButtonText}>Show QR Code</Text>
-                  </TouchableOpacity>
                 )}
               </View>
             </TouchableOpacity>
@@ -336,6 +351,8 @@ const MyTicketsScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           )}
         </View>
+      </>
+        )}
       </ScrollView>
 
       {/* QR Code Modal */}

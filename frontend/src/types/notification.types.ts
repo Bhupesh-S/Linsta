@@ -12,7 +12,8 @@ export type NotificationType =
     | 'connection'
     | 'message'
     | 'rsvp'
-    | 'community';
+    | 'community'
+    | 'system';
 
 export type NotificationActionType = 'accept' | 'reject' | 'view' | 'reply';
 

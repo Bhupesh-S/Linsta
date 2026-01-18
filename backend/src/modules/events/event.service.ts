@@ -17,6 +17,7 @@ export class EventService {
       venue?: string;
       isOnline: boolean;
       meetingLink?: string;
+      coverImage?: string;
     },
     createdBy: string
   ): Promise<IEvent> {
@@ -119,20 +120,26 @@ export class EventService {
       console.error("Failed to log RSVP activity:", err);
     });
 
-    // Notify event creator (if not the RSVP user)
+    // Notify event creator (if not the RSVP user) - asynchronously to avoid blocking
     const creator = event.createdBy.toString();
     if (creator !== userId) {
-      const User = require("../users/user.model").default;
-      const user = await User.findById(userId).select("name");
-      const userName = user?.name || "Someone";
+      try {
+        const User = require("../users/user.model").default;
+        const user = await User.findById(userId).select("name");
+        const userName = user?.name || "Someone";
 
-      await notificationService.createNotification(
-        creator,
-        userId,
-        'EVENT_RSVP',
-        `${userName} registered for your event`,
-        eventId
-      );
+        notificationService.createNotification(
+          creator,
+          userId,
+          'EVENT_RSVP',
+          `${userName} registered for your event`,
+          eventId
+        ).catch((err) => {
+          console.error("Failed to create notification:", err);
+        });
+      } catch (err) {
+        console.error("Failed to notify event creator:", err);
+      }
     }
 
     return rsvp;
@@ -157,6 +164,15 @@ export class EventService {
     }));
   }
 
+  // Check if user has RSVP'd to an event
+  static async checkUserRsvp(eventId: string, userId: string): Promise<boolean> {
+    const rsvp = await EventRsvp.findOne({
+      eventId: new Types.ObjectId(eventId),
+      userId: new Types.ObjectId(userId),
+    });
+    return !!rsvp;
+  }
+
   // Cancel RSVP
   static async cancelRsvp(eventId: string, userId: string): Promise<void> {
     const result = await EventRsvp.deleteOne({
@@ -167,5 +183,62 @@ export class EventService {
     if (result.deletedCount === 0) {
       throw new Error("RSVP not found");
     }
+  }
+
+  // Delete event (only by creator)
+  static async deleteEvent(eventId: string, userId: string): Promise<void> {
+    const event = await Event.findById(eventId);
+    
+    if (!event) {
+      throw new Error("Event not found");
+    }
+
+    // Check if user is the creator
+    if (event.createdBy.toString() !== userId) {
+      throw new Error("Unauthorized: Only the event creator can delete this event");
+    }
+
+    // Delete all RSVPs associated with this event
+    await EventRsvp.deleteMany({ eventId: new Types.ObjectId(eventId) });
+
+    // Delete the event
+    await Event.findByIdAndDelete(eventId);
+  }
+
+  // Get events created by user
+  static async getMyEvents(userId: string): Promise<any[]> {
+    const events = await Event.find({ createdBy: new Types.ObjectId(userId) })
+      .sort({ createdAt: -1 });
+
+    // Get attendee count for each event
+    const eventsWithAttendees = await Promise.all(
+      events.map(async (event) => {
+        const attendeeCount = await EventRsvp.countDocuments({ eventId: event._id });
+        return {
+          ...event.toObject(),
+          attendeeCount,
+        };
+      })
+    );
+
+    return eventsWithAttendees;
+  }
+
+  // Get events user has RSVP'd to (My Tickets)
+  static async getMyTickets(userId: string): Promise<any[]> {
+    const rsvps = await EventRsvp.find({ userId: new Types.ObjectId(userId) })
+      .populate({
+        path: 'eventId',
+        populate: {
+          path: 'createdBy',
+          select: 'name email'
+        }
+      })
+      .sort({ registeredAt: -1 });
+
+    return rsvps.map((rsvp) => ({
+      ...rsvp.eventId,
+      rsvpDate: rsvp.registeredAt,
+    }));
   }
 }

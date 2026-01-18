@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 // Notification types
-export type NotificationType = 'LIKE' | 'COMMENT' | 'EVENT_RSVP';
+export type NotificationType = 'LIKE' | 'COMMENT' | 'EVENT_RSVP' | 'NEW_STORY' | 'NEW_POST' | 'NEW_EVENT';
 
 // Interface for TypeScript
 export interface INotification extends Document {
@@ -23,7 +23,7 @@ const NotificationSchema = new Schema<INotification>(
     },
     type: {
       type: String,
-      enum: ['LIKE', 'COMMENT', 'EVENT_RSVP'],
+      enum: ['LIKE', 'COMMENT', 'EVENT_RSVP', 'NEW_STORY', 'NEW_POST', 'NEW_EVENT'],
       required: true,
     },
     message: {

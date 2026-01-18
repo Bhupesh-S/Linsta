@@ -2,9 +2,10 @@
  * Enhanced NotificationsScreen Component
  * Full-screen professional notification view with all features
  * Instagram/LinkedIn style with grouping, filters, and actions
+ * Now connected to backend with real-time Socket.IO notifications
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,17 +15,21 @@ import {
   StatusBar,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-import { Notification } from '../../types/notification.types';
+import { useAuth } from '../../context/AuthContext';
 import {
-  markAsRead,
-  markAllAsRead,
-  countUnreadNotifications,
-} from '../../utils/notificationUtils';
-import { getMockNotifications } from '../../data/mockNotifications';
+  fetchNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  getUnreadCount,
+  Notification as ApiNotification,
+} from '../../services/notifications.api';
+import { useNotificationSocket } from '../../hooks/useNotificationSocket';
+import { Notification } from '../../types/notification.types';
 import NotificationList from '../../components/notifications/NotificationList';
 import NotificationBadge from '../../components/notifications/NotificationBadge';
 import NotificationCategoryTabs from '../../components/notifications/NotificationCategoryTabs';
@@ -41,14 +46,178 @@ type FilterType = 'all' | 'unread';
 
 const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
   const { colors } = useTheme();
+  const { isAuthenticated, user } = useAuth();
   const [filter, setFilter] = useState<FilterType>('all');
   const [selectedCategory, setSelectedCategory] = useState<NotificationCategory>('all');
-  const [notifications, setNotifications] = useState<Notification[]>(
-    getMockNotifications()
-  );
-  const [loading, setLoading] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [hasToken, setHasToken] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const unreadCount = countUnreadNotifications(notifications);
+  // Socket connection for real-time notifications
+  const { isConnected, newNotification } = useNotificationSocket((notification) => {
+    // Handle new notification received via socket
+    console.log('🔔 New notification in screen:', notification);
+
+    // Convert API notification to UI notification format
+    const uiNotification = convertApiToUiNotification(notification);
+
+    // Add to notifications list
+    setNotifications((prev) => [uiNotification, ...prev]);
+    setUnreadCount((prev) => prev + 1);
+
+    // Show alert for new notification
+    if (notification.message) {
+      Alert.alert('New Notification', notification.message);
+    }
+  });
+
+  // Convert API notification to UI notification format
+  const convertApiToUiNotification = (apiNotif: ApiNotification): Notification => {
+    // Map notification types
+    let type: Notification['type'] = 'system';
+    let icon = 'notifications-outline';
+
+    switch (apiNotif.type) {
+      case 'LIKE':
+        type = 'like';
+        icon = 'heart';
+        break;
+      case 'COMMENT':
+        type = 'comment';
+        icon = 'chatbubble';
+        break;
+      case 'EVENT_RSVP':
+        type = 'event';
+        icon = 'calendar';
+        break;
+      case 'NEW_STORY':
+        type = 'system';
+        icon = 'radio-button-on';
+        break;
+      case 'NEW_POST':
+        type = 'system';
+        icon = 'images';
+        break;
+      case 'NEW_EVENT':
+        type = 'event';
+        icon = 'calendar';
+        break;
+    }
+
+    return {
+      id: apiNotif._id,
+      type,
+      content: apiNotif.message,
+      user: {
+        id: apiNotif.userId,
+        name: apiNotif.actorName || 'Someone',
+        avatar: apiNotif.actorAvatar || 'person-circle',
+      },
+      timestamp: new Date(apiNotif.createdAt).toISOString(),
+      read: apiNotif.isRead,
+      actionable: false,
+    };
+  };
+
+  // Check for token and authentication on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = await AsyncStorage.getItem('token');
+      console.log('🔐 NotificationsScreen - Token check:', token ? 'Found' : 'Not found');
+      console.log('🔐 NotificationsScreen - isAuthenticated:', isAuthenticated);
+      console.log('🔐 NotificationsScreen - user:', user);
+
+      if (!token) {
+        console.error('❌ No token found - user needs to log in');
+        Alert.alert(
+          'Authentication Required',
+          'Please log in to view notifications.',
+          [{ text: 'OK', onPress: () => navigation?.navigate?.('Login') }]
+        );
+        return;
+      }
+
+      setHasToken(true);
+      loadNotifications();
+      loadUnreadCount();
+    };
+
+    checkAuth();
+  }, []);
+
+  // Fetch notifications on mount
+  // useEffect(() => {
+  //   loadNotifications();
+  //   loadUnreadCount();
+  // }, []);
+
+  const loadNotifications = async () => {
+    try {
+      console.log('📥 Loading notifications...');
+      setLoading(true);
+      const data = await fetchNotifications(50, 0);
+      console.log('✅ Notifications loaded:', data?.length || 0, 'items');
+      console.log('📋 Raw notification data:', JSON.stringify(data, null, 2));
+      
+      if (!data || data.length === 0) {
+        console.log('ℹ️ No notifications found');
+        setNotifications([]);
+        return;
+      }
+      
+      const uiNotifications = data.map(convertApiToUiNotification);
+      console.log('✅ Converted notifications:', uiNotifications.length);
+      setNotifications(uiNotifications);
+    } catch (error: any) {
+      console.error('❌ Failed to load notifications:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      
+      // Handle authentication errors
+      if (error.message?.includes('Invalid or expired token') || 
+          error.message?.includes('401') ||
+          error.message?.includes('Unauthorized')) {
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please log in again.',
+          [
+            { 
+              text: 'Login', 
+              onPress: () => navigation?.navigate?.('Login') 
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', `Failed to load notifications: ${error.message}`);
+      }
+    } finally {
+      setLoading(false);
+      console.log('✅ Loading complete');
+    }
+  };
+
+  const loadUnreadCount = async () => {
+    try {
+      console.log('📊 Loading unread count...');
+      const count = await getUnreadCount();
+      console.log('✅ Unread count loaded:', count);
+      setUnreadCount(count);
+    } catch (error: any) {
+      console.error('❌ Failed to load unread count:', error);
+      console.error('❌ Error details:', error.message);
+      
+      // Silently fail for unread count - it's not critical
+      // User will still see notifications
+    }
+  };
+
+  const countUnreadNotifications = (notifs: Notification[]): number => {
+    return notifs.filter(n => !n.read).length;
+  };
 
   // Filter by read/unread status
   const statusFilteredNotifications = useMemo(() => {
@@ -73,10 +242,18 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
 
   // Handle notification press
   const handleNotificationPress = useCallback(
-    (notification: Notification) => {
+    async (notification: Notification) => {
       // Mark as read
       if (!notification.read) {
-        setNotifications((prev) => markAsRead(prev, notification.id));
+        try {
+          await markNotificationAsRead(notification.id);
+          setNotifications((prev) =>
+            prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
+          );
+          setUnreadCount((prev) => Math.max(0, prev - 1));
+        } catch (error) {
+          console.error('Failed to mark as read:', error);
+        }
       }
 
       // Navigate based on notification type
@@ -101,14 +278,30 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   // Handle mark single as read
-  const handleMarkAsRead = useCallback((notificationId: string) => {
-    setNotifications((prev) => markAsRead(prev, notificationId));
+  const handleMarkAsRead = useCallback(async (notificationId: string) => {
+    try {
+      await markNotificationAsRead(notificationId);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Failed to mark as read:', error);
+      Alert.alert('Error', 'Failed to mark notification as read');
+    }
   }, []);
 
   // Handle mark all as read
-  const handleMarkAllAsRead = useCallback(() => {
-    setNotifications((prev) => markAllAsRead(prev));
-    Alert.alert('Success', 'All notifications marked as read');
+  const handleMarkAllAsRead = useCallback(async () => {
+    try {
+      await markAllNotificationsAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+      Alert.alert('Success', 'All notifications marked as read');
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+      Alert.alert('Error', 'Failed to mark all notifications as read');
+    }
   }, []);
 
   // Handle action button press
@@ -179,42 +372,58 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              Notifications
-            </Text>
-            {unreadCount > 0 && (
-              <NotificationBadge count={unreadCount} size="small" />
-            )}
-          </View>
+          {!hasToken ? (
+            <>
+              <Text style={styles.headerTitle}>Notifications</Text>
+              <View style={styles.headerRight}>
+                <TouchableOpacity
+                  onPress={() => navigation?.navigate?.('Login')}
+                  style={styles.loginButton}
+                >
+                  <Ionicons name="log-in-outline" size={24} color="white" />
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.headerCenter}>
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                  Notifications
+                </Text>
+                {unreadCount > 0 && (
+                  <NotificationBadge count={unreadCount} size="small" />
+                )}
+              </View>
 
-          <View style={styles.headerRight}>
-            {unreadCount > 0 && (
-              <TouchableOpacity
-                style={styles.markReadButton}
-                activeOpacity={0.7}
-                onPress={handleMarkAllAsRead}
-                accessible={true}
-                accessibilityLabel="Mark all as read"
-                accessibilityRole="button"
-              >
-                <Ionicons name="checkmark-done" size={22} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.iconButton}
-              activeOpacity={0.7}
-              onPress={() => navigation?.navigate?.('NotificationSettings')}
-              accessible={true}
-              accessibilityLabel="Notification settings"
-              accessibilityRole="button"
-            >
-              <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
+              <View style={styles.headerRight}>
+                {unreadCount > 0 && (
+                  <TouchableOpacity
+                    style={styles.markReadButton}
+                    activeOpacity={0.7}
+                    onPress={handleMarkAllAsRead}
+                    accessible={true}
+                    accessibilityLabel="Mark all as read"
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="checkmark-done" size={22} color="#FFFFFF" />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.iconButton}
+                  activeOpacity={0.7}
+                  onPress={() => navigation?.navigate?.('NotificationSettings')}
+                  accessible={true}
+                  accessibilityLabel="Notification settings"
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </View>
       </LinearGradient>
 
@@ -369,6 +578,10 @@ const styles = StyleSheet.create({
   },
   filterTextActive: {
     color: '#FFFFFF',
+  },
+  loginButton: {
+    padding: 4,
+    marginLeft: 8,
   },
 });
 

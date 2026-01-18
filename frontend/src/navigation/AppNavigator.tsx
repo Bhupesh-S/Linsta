@@ -225,7 +225,7 @@ const AppNavigatorInner = () => {
         return (
           <EventDetailScreen
             navigation={navigation}
-            route={{ params: { event: navState.currentParams?.event } }}
+            route={{ params: { event: navState.currentParams?.event, eventId: navState.currentParams?.eventId } }}
           />
         );
 

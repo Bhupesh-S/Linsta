@@ -19,7 +19,7 @@ export class NotificationService {
   async createNotification(
     receiverId: string,
     actorId: string,
-    type: 'LIKE' | 'COMMENT' | 'EVENT_RSVP',
+    type: 'LIKE' | 'COMMENT' | 'EVENT_RSVP' | 'NEW_STORY' | 'NEW_POST' | 'NEW_EVENT',
     message: string,
     referenceId: string
   ): Promise<void> {
@@ -52,6 +52,51 @@ export class NotificationService {
     } catch (error) {
       // Log error but don't crash the main operation
       console.error('Failed to create notification:', error);
+    }
+  }
+
+  /**
+   * Create broadcast notification for followers
+   * Used when user creates new content (story, post, event)
+   */
+  async createBroadcastNotification(
+    actorId: string,
+    followerIds: string[],
+    type: 'NEW_STORY' | 'NEW_POST' | 'NEW_EVENT',
+    message: string,
+    referenceId: string
+  ): Promise<void> {
+    try {
+      // Create notifications for all followers
+      const notifications = followerIds.map(followerId => ({
+        userId: new mongoose.Types.ObjectId(followerId),
+        type,
+        message,
+        referenceId: new mongoose.Types.ObjectId(referenceId),
+        isRead: false,
+      }));
+
+      // Bulk insert notifications
+      const createdNotifications = await Notification.insertMany(notifications);
+
+      // Emit to online users
+      if (io) {
+        const socketIO = io; // Capture io in a const to satisfy TypeScript
+        createdNotifications.forEach((notification, index) => {
+          const followerId = followerIds[index];
+          emitNotificationToUser(socketIO, followerId, {
+            _id: notification._id,
+            userId: notification.userId,
+            type: notification.type,
+            message: notification.message,
+            referenceId: notification.referenceId,
+            isRead: notification.isRead,
+            createdAt: notification.createdAt,
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create broadcast notifications:', error);
     }
   }
 

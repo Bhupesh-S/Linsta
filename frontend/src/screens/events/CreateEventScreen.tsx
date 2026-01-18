@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import BottomNavigation from '../../components/BottomNavigation';
 import CreateEventWizard from '../../pages/organizer/CreateEventWizard';
 import { EventCategory, LocationType } from '../../utils/eventTypes';
+import { createEvent } from '../../services/events.api';
 
 interface CreateEventScreenProps {
   navigation?: any;
@@ -34,6 +36,7 @@ interface EventFormData {
 
 const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ navigation }) => {
   const [currentStep, setCurrentStep] = useState(1);
+  const [publishing, setPublishing] = useState(false);
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
     category: '',
@@ -115,17 +118,44 @@ const CreateEventScreen: React.FC<CreateEventScreenProps> = ({ navigation }) => 
     }
   };
 
-  const handlePublish = () => {
-    Alert.alert(
-      'Event Created!',
-      'Your event has been published successfully.',
-      [
-        {
-          text: 'OK',
-          onPress: () => navigation?.navigate('Events'),
-        },
-      ]
-    );
+  const handlePublish = async () => {
+    try {
+      setPublishing(true);
+      console.log('📅 Publishing event...');
+      
+      // Create event via backend API
+      const event = await createEvent({
+        title: formData.title,
+        description: formData.description,
+        category: formData.category as string,
+        date: formData.startDate.toISOString(),
+        time: formatTime(formData.startDate),
+        venue: formData.location,
+        isOnline: formData.locationType === 'Online',
+        meetingLink: formData.locationType === 'Online' ? formData.location : undefined,
+      });
+      
+      console.log('✅ Event created:', event._id);
+      
+      Alert.alert(
+        'Event Created!',
+        'Your event has been published successfully.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation?.navigate('Events'),
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error('❌ Error creating event:', error);
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to create event. Please try again.'
+      );
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const handleSaveDraft = () => {

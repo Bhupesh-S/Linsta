@@ -10,6 +10,7 @@ export interface IEvent extends Document {
   venue?: string;
   isOnline: boolean;
   meetingLink?: string;
+  coverImage?: string;
   createdBy: Types.ObjectId;
   createdAt: Date;
 }
@@ -44,6 +45,10 @@ const eventSchema = new Schema<IEvent>({
   },
   meetingLink: {
     type: String,
+  },
+  coverImage: {
+    type: String,
+    trim: true,
   },
   createdBy: {
     type: Schema.Types.ObjectId,

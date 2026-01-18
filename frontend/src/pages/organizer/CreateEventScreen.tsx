@@ -13,11 +13,14 @@ import {
     TextInput,
     Alert,
     ActivityIndicator,
+    Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../context/ThemeContext';
 import { createEvent } from '../../services/events.api';
+import { uploadImage } from '../../services/upload.api';
 
 interface Props {
     navigation?: any;
@@ -39,8 +42,37 @@ const CreateEventScreen: React.FC<Props> = ({ navigation }) => {
     const [isOnline, setIsOnline] = useState(false);
     const [meetingLink, setMeetingLink] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [coverImage, setCoverImage] = useState<string | null>(null);
+    const [coverImageLocal, setCoverImageLocal] = useState<string | null>(null);
 
     const categories = ['Conference', 'Workshop', 'Networking', 'Entertainment', 'Sports', 'Food & Beverage'];
+
+    const handlePickImage = async () => {
+        try {
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+            if (permissionResult.granted === false) {
+                Alert.alert('Permission Required', 'Permission to access camera roll is required!');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [3, 1],
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const uri = result.assets[0].uri;
+                setCoverImageLocal(uri);
+                console.log('📸 Selected cover image:', uri);
+            }
+        } catch (error) {
+            console.error('Error picking image:', error);
+            Alert.alert('Error', 'Failed to pick image');
+        }
+    };
 
     const handleCreate = async () => {
         if (!eventName || !category) {
@@ -60,6 +92,15 @@ const CreateEventScreen: React.FC<Props> = ({ navigation }) => {
 
         try {
             setIsLoading(true);
+
+            // Upload cover image if selected
+            let coverImageUrl: string | undefined;
+            if (coverImageLocal) {
+                console.log('📤 Uploading cover image...');
+                const uploadResult = await uploadImage(coverImageLocal);
+                coverImageUrl = uploadResult.url;
+                console.log('✅ Cover image uploaded:', coverImageUrl);
+            }
 
             // Build venue string from components
             const venueString = isOnline 
@@ -86,9 +127,12 @@ const CreateEventScreen: React.FC<Props> = ({ navigation }) => {
                 venue: venueString || undefined,
                 isOnline: isOnline,
                 meetingLink: meetingLink.trim() || undefined,
+                coverImage: coverImageUrl,
             };
 
+            console.log('📝 Creating event with data:', eventData);
             const result = await createEvent(eventData);
+            console.log('✅ Event created:', result);
             
             setIsLoading(false);
             
@@ -98,12 +142,13 @@ const CreateEventScreen: React.FC<Props> = ({ navigation }) => {
                 [
                     {
                         text: 'OK',
-                        onPress: () => navigation?.goBack?.(),
+                        onPress: () => navigation?.navigate?.('OrganizerMyEvents'),
                     },
                 ]
             );
         } catch (error: any) {
             setIsLoading(false);
+            console.error('❌ Error creating event:', error);
             Alert.alert(
                 'Error',
                 error.message || 'Failed to create event. Please try again.'
@@ -148,14 +193,31 @@ const CreateEventScreen: React.FC<Props> = ({ navigation }) => {
                     <TouchableOpacity
                         style={[styles.uploadBox, { borderColor: colors.border }]}
                         activeOpacity={0.7}
+                        onPress={handlePickImage}
                     >
-                        <Ionicons name="image-outline" size={48} color={colors.textSecondary} />
-                        <Text style={[styles.uploadText, { color: colors.textSecondary }]}>
-                            Upload Event Banner
-                        </Text>
-                        <Text style={[styles.uploadHint, { color: colors.textTertiary }]}>
-                            Recommended: 1200x400px
-                        </Text>
+                        {coverImageLocal ? (
+                            <View style={styles.imagePreviewContainer}>
+                                <Image 
+                                    source={{ uri: coverImageLocal }} 
+                                    style={styles.imagePreview}
+                                    resizeMode="cover"
+                                />
+                                <View style={styles.changeImageOverlay}>
+                                    <Ionicons name="camera" size={32} color="#FFFFFF" />
+                                    <Text style={styles.changeImageText}>Change Image</Text>
+                                </View>
+                            </View>
+                        ) : (
+                            <>
+                                <Ionicons name="image-outline" size={48} color={colors.textSecondary} />
+                                <Text style={[styles.uploadText, { color: colors.textSecondary }]}>
+                                    Upload Event Banner
+                                </Text>
+                                <Text style={[styles.uploadHint, { color: colors.textTertiary }]}>
+                                    Recommended: 1200x400px
+                                </Text>
+                            </>
+                        )}
                     </TouchableOpacity>
                 </View>
 
@@ -625,6 +687,29 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+    imagePreviewContainer: {
+        width: '100%',
+        height: 200,
+        borderRadius: 12,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    imagePreview: {
+        width: '100%',
+        height: '100%',
+    },
+    changeImageOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    changeImageText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '600',
+        marginTop: 8,
     },
 });
 

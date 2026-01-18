@@ -42,6 +42,34 @@ export class PostService {
       console.log('✅ Media inserted successfully:', insertedMedia.length, 'documents');
     }
 
+    // Create notification for new post
+    // TODO: In production, get actual followers from user model
+    // For testing: notify all other users about the new post
+    try {
+      const User = (await import('../users/user.model')).User;
+      const allUsers = await User.find({ _id: { $ne: new Types.ObjectId(userId) } }).limit(10);
+      const followerIds = allUsers.map(u => u._id.toString());
+      
+      if (followerIds.length > 0) {
+        const authorName = await this.getAuthorName(userId);
+        const message = `${authorName} created a new post${data.caption ? ': ' + data.caption.substring(0, 50) : ''}`;
+        
+        // Use broadcast notification to notify multiple users
+        await notificationService.createBroadcastNotification(
+          userId,
+          followerIds,
+          'NEW_POST',
+          message,
+          post._id.toString()
+        );
+        
+        console.log(`📢 Created notifications for ${followerIds.length} users about new post:`, post._id);
+      }
+    } catch (error) {
+      console.error('Failed to create post notifications:', error);
+      // Don't fail the post creation if notification fails
+    }
+
     // Return populated post
     return this.getPostById(post._id.toString(), userId);
   }

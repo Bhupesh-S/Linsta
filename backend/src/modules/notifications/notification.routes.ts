@@ -40,4 +40,13 @@ router.put('/mark-all/read', authMiddleware, (req, res) =>
   notificationController.markAllAsRead(req, res)
 );
 
+/**
+ * POST /api/notifications/test/create
+ * Create test notifications for development
+ * WARNING: Development only! Remove in production
+ */
+router.post('/test/create', authMiddleware, (req, res) =>
+  notificationController.createTestNotifications(req, res)
+);
+
 export default router;

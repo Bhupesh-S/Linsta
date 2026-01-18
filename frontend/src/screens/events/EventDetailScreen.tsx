@@ -8,11 +8,14 @@ import {
   Share,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Event } from '../../utils/eventTypes';
 import { useEvents } from '../../context/EventContext';
+import { useAuth } from '../../context/AuthContext';
+import { getEventById } from '../../services/events.api';
 
 interface EventDetailScreenProps {
   route?: any;
@@ -20,11 +23,93 @@ interface EventDetailScreenProps {
 }
 
 const EventDetailScreen: React.FC<EventDetailScreenProps> = ({ route, navigation }) => {
-  const event: Event = route?.params?.event;
-  const { updateEventRSVP, userEvents } = useEvents();
+  const eventFromParams: Event = route?.params?.event;
+  const eventId: string = route?.params?.eventId;
+  
+  // Debug logging
+  console.log('🔍 EventDetailScreen - Params:', {
+    hasEvent: !!eventFromParams,
+    hasEventId: !!eventId,
+    eventId: eventId,
+    eventTitle: eventFromParams?.title,
+    allParams: route?.params
+  });
+  
+  const [event, setEvent] = useState<Event | null>(eventFromParams || null);
+  const [loading, setLoading] = useState(!eventFromParams && !!eventId);
+  
+  const { updateEventRSVP, userEvents, deleteEvent } = useEvents();
+  const { user } = useAuth();
   const [isBookmarked, setIsBookmarked] = useState(event?.isBookmarked || false);
   const [hasRSVPd, setHasRSVPd] = useState(event?.hasRSVPd || false);
   const [attendeeCount, setAttendeeCount] = useState(event?.attendeeCount || 0);
+  
+  // Check if current user is the event owner
+  const isOwner = user?.id === event?.host?.id || user?.id === event?.createdBy;
+
+  // Fetch event if only ID is provided
+  useEffect(() => {
+    const fetchEvent = async () => {
+      if (!eventFromParams && eventId) {
+        try {
+          console.log('📥 Fetching event details for ID:', eventId);
+          setLoading(true);
+          const fetchedEvent = await getEventById(eventId);
+          console.log('✅ Event fetched:', fetchedEvent.title);
+          
+          // Convert API event to Event type
+          const convertedEvent: Event = {
+            id: fetchedEvent._id,
+            title: fetchedEvent.title,
+            description: fetchedEvent.description,
+            date: fetchedEvent.date,
+            time: fetchedEvent.time,
+            venue: fetchedEvent.venue,
+            category: fetchedEvent.category,
+            coverImage: fetchedEvent.coverImage,
+            isOnline: fetchedEvent.isOnline,
+            meetingLink: fetchedEvent.meetingLink || '',
+            attendeeCount: fetchedEvent.attendeeCount || 0,
+            hasRSVPd: false,
+            host: {
+              id: fetchedEvent.createdBy,
+              name: 'Event Host',
+              avatar: '',
+            },
+            createdBy: fetchedEvent.createdBy,
+          };
+          
+          setEvent(convertedEvent);
+          setAttendeeCount(convertedEvent.attendeeCount);
+        } catch (error) {
+          console.error('❌ Error fetching event:', error);
+          Alert.alert('Error', 'Failed to load event details');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchEvent();
+  }, [eventId, eventFromParams]);
+
+  // Check RSVP status from backend when event is loaded
+  useEffect(() => {
+    const checkRsvpStatus = async () => {
+      if (event?.id && !event.id.startsWith('user_event_')) {
+        try {
+          const { checkUserRsvp } = await import('../../services/events.api');
+          const { hasRsvp } = await checkUserRsvp(event.id);
+          console.log('🎫 RSVP status checked:', hasRsvp);
+          setHasRSVPd(hasRsvp);
+        } catch (error) {
+          console.error('❌ Error checking RSVP status:', error);
+        }
+      }
+    };
+
+    checkRsvpStatus();
+  }, [event?.id]);
 
   // Load persisted state from EventContext on mount
   useEffect(() => {
@@ -37,10 +122,30 @@ const EventDetailScreen: React.FC<EventDetailScreenProps> = ({ route, navigation
     }
   }, [event?.id, userEvents]);
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0A66C2" />
+          <Text style={styles.loadingText}>Loading event details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!event) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text>Event not found</Text>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+          <Text style={styles.errorText}>Event not found</Text>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation?.goBack?.()}
+          >
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
@@ -68,16 +173,68 @@ const EventDetailScreen: React.FC<EventDetailScreenProps> = ({ route, navigation
       );
       return;
     }
-    
-    setHasRSVPd(newRSVPState);
-    
-    // Update attendee count
-    const newAttendeeCount = newRSVPState ? attendeeCount + 1 : attendeeCount - 1;
-    setAttendeeCount(newAttendeeCount);
-    
-    // Persist RSVP state and attendee count if this is a user event
-    if (event.id.startsWith('user_event_')) {
+
+    const previousRSVPState = hasRSVPd;
+    const previousAttendeeCount = attendeeCount;
+
+    try {
+      // Update UI optimistically
+      setHasRSVPd(newRSVPState);
+      const newAttendeeCount = newRSVPState ? attendeeCount + 1 : attendeeCount - 1;
+      setAttendeeCount(newAttendeeCount);
+
+      // Call backend API through EventContext
       await updateEventRSVP(event.id, newRSVPState, newAttendeeCount);
+      
+      // Verify RSVP status from backend after update
+      try {
+        const { checkUserRsvp } = await import('../../services/events.api');
+        const { hasRsvp } = await checkUserRsvp(event.id);
+        console.log('✅ RSVP verified from backend:', hasRsvp);
+        setHasRSVPd(hasRsvp);
+      } catch (verifyError) {
+        console.warn('⚠️ Could not verify RSVP status:', verifyError);
+      }
+
+      // Refetch event to get updated attendee count
+      try {
+        const { getEventById } = await import('../../services/events.api');
+        const updatedEvent = await getEventById(event.id);
+        setAttendeeCount(updatedEvent.attendeeCount || attendeeCount);
+        console.log('✅ Event refreshed, attendee count:', updatedEvent.attendeeCount);
+      } catch (refreshError) {
+        console.warn('⚠️ Could not refresh event data:', refreshError);
+      }
+      
+      // Show success message
+      Alert.alert(
+        'Success',
+        newRSVPState ? '✅ You are registered for this event!' : '✅ RSVP cancelled successfully',
+        [{ text: 'OK' }]
+      );
+    } catch (error: any) {
+      // Check if error is "Already registered" - treat as success
+      if (error.message && error.message.includes('Already registered')) {
+        console.log('ℹ️ Already registered, updating UI state');
+        setHasRSVPd(true); // Ensure UI shows registered state
+        Alert.alert(
+          'Already Registered',
+          'You are already registered for this event!',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      // For other errors, revert UI
+      setHasRSVPd(previousRSVPState);
+      setAttendeeCount(previousAttendeeCount);
+      
+      console.error('❌ RSVP Error:', error);
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to update RSVP. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -95,6 +252,33 @@ const EventDetailScreen: React.FC<EventDetailScreenProps> = ({ route, navigation
     }
   };
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Event',
+      'Are you sure you want to delete this event? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteEvent(event.id);
+              Alert.alert('Success', 'Event deleted successfully', [
+                { text: 'OK', onPress: () => navigation?.goBack() }
+              ]);
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to delete event');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header with Back Button */}
@@ -103,7 +287,13 @@ const EventDetailScreen: React.FC<EventDetailScreenProps> = ({ route, navigation
           <Ionicons name="arrow-back" size={24} color="#262626" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Event Details</Text>
-        <View style={{ width: 24 }} />
+        {isOwner ? (
+          <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+            <Ionicons name="trash-outline" size={24} color="#ff3b30" />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 24 }} />
+        )}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -253,6 +443,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#dbdbdb',
   },
   backButton: {
+    padding: 4,
+  },
+  deleteButton: {
     padding: 4,
   },
   headerTitle: {
@@ -407,6 +600,41 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#262626',
     lineHeight: 22,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#8e8e8e',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#262626',
+    marginBottom: 24,
+  },
+  backButton: {
+    backgroundColor: '#0A66C2',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

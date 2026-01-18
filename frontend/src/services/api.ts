@@ -15,15 +15,15 @@ const getCommonUrls = (): string[] => {
     console.log('🔧 Using MANUAL_URL:', MANUAL_URL);
     return [MANUAL_URL];
   }
-  
+
   const urls = [
-    'http://192.168.43.114:5000',   // Your PC's Current Wi-Fi IP (PRIMARY) ⭐
+    'http://10.90.116.188:5000',    // Your PC's Current Wi-Fi IP (PRIMARY) ⭐
     'http://192.168.28.61:5000',    // Alternative Wi-Fi IP
     'http://192.168.56.1:5000',     // Your PC's Ethernet IP
     'http://10.0.2.2:5000',         // Android emulator
     'http://localhost:5000',        // Localhost/iOS simulator
   ];
-  
+
   // In development, the app will auto-detect the correct URL on first API call
   return urls;
 };
@@ -32,20 +32,20 @@ const getCommonUrls = (): string[] => {
 export const testConnection = async (): Promise<string | null> => {
   console.log('🔍 Auto-detecting backend server...');
   const urls = getCommonUrls();
-  
+
   for (const url of urls) {
     try {
       console.log(`Testing: ${url}`);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
-      
-      const response = await fetch(`${url}/api/auth/login`, { 
+
+      const response = await fetch(`${url}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'test', password: 'test' }),
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
       // Any response (even errors) means server is reachable
       console.log(`✅ Server found at: ${url}`);
@@ -55,7 +55,7 @@ export const testConnection = async (): Promise<string | null> => {
       console.log(`❌ Not reachable: ${url}`, error.message);
     }
   }
-  
+
   console.log('❌ No backend server found. Using fallback:', API_BASE_URL);
   return null;
 };
@@ -117,11 +117,11 @@ export const authApi = {
       const apiUrl = await getApiUrl();
       console.log('Registering user with:', { email: data.email, name: data.name });
       console.log('API URL:', `${apiUrl}/api/auth/register`);
-      
+
       // Add timeout for network request
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
+
       const response = await fetch(`${apiUrl}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -143,12 +143,12 @@ export const authApi = {
       return result;
     } catch (error: any) {
       console.error('Registration error:', error);
-      
+
       // Check if network error OR timeout error
       if (error.name === 'AbortError' || error.message === 'Network request failed') {
         throw new Error('Cannot connect to server. Please check: your internet connection and try again.');
       }
-      
+
       throw error;
     }
   },
@@ -158,11 +158,11 @@ export const authApi = {
       const apiUrl = await getApiUrl();
       console.log('🔐 Logging in user:', data.email);
       console.log('API URL:', `${apiUrl}/api/auth/login`);
-      
+
       // Add timeout for network request
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
+
       const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -186,12 +186,12 @@ export const authApi = {
       return result;
     } catch (error: any) {
       console.error('❌ Login error:', error);
-      
+
       // Check if network error OR timeout error
       if (error.name === 'AbortError' || error.message === 'Network request failed') {
         throw new Error('Cannot connect to server. Please check: your internet connection and try again.');
       }
-      
+
       throw error;
     }
   },
@@ -256,12 +256,12 @@ export const authApi = {
 export const getAuthHeader = async (): Promise<{ Authorization: string }> => {
   const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
   const token = await AsyncStorage.getItem('token');
-  
+
   if (!token) {
     console.warn('⚠️ No token found in AsyncStorage');
     throw new Error('No authentication token found');
   }
-  
+
   console.log('🔑 Token retrieved for auth header:', token.substring(0, 20) + '...');
   return { Authorization: `Bearer ${token}` };
 };

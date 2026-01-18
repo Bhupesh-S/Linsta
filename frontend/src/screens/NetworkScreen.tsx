@@ -1,6 +1,6 @@
 // NetworkScreen - Main networking interface
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,20 +10,22 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNetwork } from '../hooks/useNetwork';
+import { useMessages } from '../context/MessageContext';
 import { UserCard } from '../components/UserCard';
 import { CommunityCard } from '../components/CommunityCard';
 import { ProfilePreviewModal } from '../components/ProfilePreviewModal';
 import { NetworkUser, SearchFilters } from '../types/network.types';
-import { Job, mockJobs } from '../types/job.types';
-import { JobCard } from '../components/JobCard';
+import { postsApi, Post as BackendPost } from '../services/posts.api';
+import PostCard from '../components/PostCard';
 import BottomNavigation from '../components/BottomNavigation';
 import CreateContentModal from '../components/CreateContentModal';
 
-type TabType = 'jobs' | 'connections' | 'suggestions' | 'requests';
+type TabType = 'feed' | 'connections' | 'suggestions' | 'requests';
 
 interface NetworkScreenProps {
   navigation?: any;
@@ -45,7 +47,10 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
     joinCommunity,
     leaveCommunity,
     checkMessagingPermission,
+    connections,
   } = useNetwork();
+
+  const { openConversationWithUser } = useMessages();
 
   const [activeTab, setActiveTab] = useState<TabType>('suggestions');
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,6 +60,49 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showFirstVisitBanner, setShowFirstVisitBanner] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Network feed state (real posts from backend)
+  const [feedPosts, setFeedPosts] = useState<BackendPost[]>([]);
+  const [feedLoading, setFeedLoading] = useState(false);
+  const [feedRefreshing, setFeedRefreshing] = useState(false);
+  const [feedError, setFeedError] = useState<string | null>(null);
+
+  const loadFeed = useCallback(async (isRefresh: boolean = false) => {
+    if (!isRefresh) {
+      setFeedLoading(true);
+    }
+    setFeedError(null);
+    try {
+      const posts = await postsApi.getFeed(20, 0);
+      setFeedPosts(posts);
+    } catch (err) {
+      console.error('Failed to load network feed', err);
+      setFeedError('Failed to load network feed');
+    } finally {
+      if (!isRefresh) {
+        setFeedLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'feed' && feedPosts.length === 0 && !feedLoading) {
+      loadFeed(false);
+    }
+  }, [activeTab, feedPosts.length, feedLoading, loadFeed]);
+
+  const handleRefreshFeed = useCallback(async () => {
+    setFeedRefreshing(true);
+    try {
+      await loadFeed(true);
+    } finally {
+      setFeedRefreshing(false);
+    }
+  }, [loadFeed]);
+
+  const handlePostDeleted = useCallback((postId: string) => {
+    setFeedPosts(prev => prev.filter(p => p._id !== postId));
+  }, []);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -76,8 +124,15 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
     setShowProfileModal(true);
   };
 
-  const handleMessage = (userId: string) => {
-    Alert.alert('Message', `Opening chat with user ${userId}`);
+  const handleMessage = async (userId: string, name: string) => {
+    try {
+      const conversationId = await openConversationWithUser(userId, name);
+      if (navigation) {
+        navigation.navigate('Chat', { conversationId });
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to open chat');
+    }
   };
 
   const handleAcceptRequest = async (requestId: string) => {
@@ -103,11 +158,15 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   };
 
   const handleCreateStory = () => {
-    Alert.alert('Create Story', 'Story creation coming soon!');
+    if (navigation) {
+      navigation.navigate('CreateStory');
+    }
   };
 
   const handleCreatePost = () => {
-    Alert.alert('Write Article', 'Article creation coming soon!');
+    if (navigation) {
+      navigation.navigate('CreateArticle');
+    }
   };
 
   const handleCreateEvent = () => {
@@ -117,7 +176,9 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   };
 
   const handleCreateReel = () => {
-    Alert.alert('Record Reel', 'Reel recording coming soon!');
+    if (navigation) {
+      navigation.navigate('CreateReel');
+    }
   };
 
   const renderTabContent = () => {
@@ -187,7 +248,7 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
         );
 
       case 'connections':
-        const connectedUsers = suggestions.filter(u => u.connectionStatus === 'connected');
+        const connectedUsers = connections;
         return (
           <View>
             {connectedUsers.length > 0 ? (
@@ -209,16 +270,38 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
           </View>
         );
 
-      case 'jobs':
+      case 'feed':
+        if (feedLoading && feedPosts.length === 0) {
+          return (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#0a66c2" />
+            </View>
+          );
+        }
+
         return (
           <View>
-            {mockJobs.map(job => (
-              <JobCard
-                key={job.id}
-                job={job}
-                onApply={(jobId) => Alert.alert('Apply', `Applying for job: ${jobId}`)}
-              />
-            ))}
+            {feedError && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{feedError}</Text>
+              </View>
+            )}
+
+            {feedPosts.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="briefcase-outline" size={64} color="#d1d5db" />
+                <Text style={styles.emptyText}>No updates in your network yet</Text>
+                <Text style={styles.emptySubtext}>
+                  Start posting and connecting to see professional updates here.
+                </Text>
+              </View>
+            ) : (
+              feedPosts.map(post => (
+                <View key={post._id} style={{ marginBottom: 16 }}>
+                  <PostCard post={post} onPostDeleted={() => handlePostDeleted(post._id)} />
+                </View>
+              ))
+            )}
           </View>
         );
 
@@ -259,18 +342,41 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
       {stats && (
         <View style={styles.statsContainer}>
           <View style={styles.statsRow}>
-            <View style={styles.statItem}>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => navigation?.navigate?.('Connections', { initialTab: 'connections' })}
+            >
               <Text style={styles.statValue}>{stats.connectionsCount}</Text>
               <Text style={styles.statLabel}>Connections</Text>
-            </View>
-            <View style={styles.statItem}>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => navigation?.navigate?.('Connections', { initialTab: 'followers' })}
+            >
               <Text style={styles.statValue}>{stats.followersCount}</Text>
               <Text style={styles.statLabel}>Followers</Text>
-            </View>
-            <View style={styles.statItem}>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => navigation?.navigate?.('Connections', { initialTab: 'following' })}
+            >
+              <Text style={styles.statValue}>{stats.followingCount}</Text>
+              <Text style={styles.statLabel}>Following</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => navigation?.navigate?.('Communities')}
+            >
+              <Text style={styles.statValue}>{communities.length}</Text>
+              <Text style={styles.statLabel}>Communities</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => setActiveTab('requests')}
+            >
               <Text style={styles.statValue}>{stats.pendingRequestsCount}</Text>
               <Text style={styles.statLabel}>Pending</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -278,7 +384,7 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
-          {(['jobs', 'connections', 'suggestions', 'requests'] as TabType[]).map(tab => (
+          {(['feed', 'connections', 'suggestions', 'requests'] as TabType[]).map(tab => (
             <TouchableOpacity
               key={tab}
               onPress={() => setActiveTab(tab)}
@@ -299,7 +405,7 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
           <TextInput
             style={styles.searchInput}
             placeholder={
-              activeTab === 'jobs' ? 'Search jobs...' :
+              activeTab === 'feed' ? 'Search people in your network...' :
               activeTab === 'connections' ? 'Search connections...' :
               activeTab === 'suggestions' ? 'Search suggestions...' :
               activeTab === 'requests' ? 'Search requests...' :
@@ -318,7 +424,22 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          activeTab === 'feed'
+            ? (
+                <RefreshControl
+                  refreshing={feedRefreshing}
+                  onRefresh={handleRefreshFeed}
+                  colors={["#0A66C2"]}
+                  tintColor="#0A66C2"
+                />
+              )
+            : undefined
+        }
+      >
         {error && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>

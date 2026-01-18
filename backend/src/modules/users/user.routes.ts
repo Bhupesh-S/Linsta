@@ -5,6 +5,7 @@ import { upload } from "../../middlewares/upload.middleware";
 import { uploadProfileImage } from "../../config/cloudinary";
 import { User } from "./user.model";
 import { UserProfile } from "./profile.model";
+import { connectedUsers, userLastSeen } from "../../socket/socket";
 
 const router = Router();
 
@@ -31,6 +32,24 @@ router.get("/profile", authMiddleware, async (req: Request, res: Response): Prom
         createdAt: user.createdAt,
       },
       profile,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/users/status/:userId - Online / last-seen status
+router.get("/status/:userId", authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+
+    const online = connectedUsers.has(userId);
+    const lastSeen = userLastSeen.get(userId) || null;
+
+    res.status(200).json({
+      userId,
+      online,
+      lastSeen,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

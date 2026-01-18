@@ -7,20 +7,28 @@ interface Props {
   members: number;
   joined?: boolean;
   onToggle?: () => void;
+  onPress?: () => void;
 }
 
-const CommunityCard: React.FC<Props> = ({ name, members, joined, onToggle }) => {
+const CommunityCard: React.FC<Props> = ({ name, members, joined, onToggle, onPress }) => {
   const { colors } = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={onPress}
+      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+    >
       <View style={{ flex: 1 }}>
         <Text style={[styles.name, { color: colors.text }]}>{name}</Text>
         <Text style={{ color: colors.text }}>{members} members</Text>
       </View>
-      <TouchableOpacity onPress={onToggle} style={[styles.btn, { backgroundColor: joined ? colors.card : colors.primary, borderColor: colors.border }]}>
+      <TouchableOpacity
+        onPress={onToggle}
+        style={[styles.btn, { backgroundColor: joined ? colors.backgroundElevated : colors.primary, borderColor: colors.border }]}
+      >
         <Text style={{ color: joined ? colors.text : '#fff' }}>{joined ? 'Leave' : 'Join'}</Text>
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 };
 

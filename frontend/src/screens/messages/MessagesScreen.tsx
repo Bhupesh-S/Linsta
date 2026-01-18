@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useMessages } from '../../context/MessageContext';
+import { useAuth } from '../../context/AuthContext';
 import { Conversation } from '../../utils/messageTypes';
 
 interface MessagesScreenProps {
@@ -18,6 +19,14 @@ interface MessagesScreenProps {
 
 const MessagesScreen: React.FC<MessagesScreenProps> = ({ navigation }) => {
   const { conversations } = useMessages();
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+
+  const handleNewMessage = () => {
+    if (navigation) {
+      navigation.navigate('Network');
+    }
+  };
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -37,7 +46,11 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ navigation }) => {
   };
 
   const renderConversation = ({ item }: { item: Conversation }) => {
-    const lastMessage = item.messages[item.messages.length - 1];
+    const lastMessage = item.lastMessage || item.messages[item.messages.length - 1];
+
+    if (!lastMessage) {
+      return null;
+    }
     
     return (
       <TouchableOpacity
@@ -68,7 +81,7 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ navigation }) => {
               ]}
               numberOfLines={1}
             >
-              {lastMessage.senderId === 'current_user' ? 'You: ' : ''}
+              {currentUserId && lastMessage.senderId === currentUserId ? 'You: ' : ''}
               {lastMessage.text}
             </Text>
           </View>
@@ -85,20 +98,51 @@ const MessagesScreen: React.FC<MessagesScreenProps> = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
-        <TouchableOpacity style={styles.newMessageButton}>
+        <View style={styles.headerLeft}>
+          {navigation && (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack?.()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#0A66C2" />
+            </TouchableOpacity>
+          )}
+          <Text style={styles.headerTitle}>Messages</Text>
+        </View>
+        <TouchableOpacity style={styles.newMessageButton} onPress={handleNewMessage}>
           <Ionicons name="create-outline" size={24} color="#0A66C2" />
         </TouchableOpacity>
       </View>
 
-      {/* Conversation List */}
-      <FlatList
-        data={conversations}
-        renderItem={renderConversation}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
+      {/* Conversation List / Empty State */}
+      {conversations.length > 0 ? (
+        <FlatList
+          data={conversations}
+          renderItem={renderConversation}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="chatbubble-ellipses-outline" size={64} color="#d1d5db" />
+          <Text style={styles.emptyTitle}>No messages yet</Text>
+          <Text style={styles.emptySubtitle}>
+            Start a conversation with your connections or people in your network.
+          </Text>
+
+          <TouchableOpacity style={styles.primaryButton} onPress={handleNewMessage}>
+            <Text style={styles.primaryButtonText}>Start a message</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation?.navigate?.('Network')}
+          >
+            <Text style={styles.secondaryButtonText}>Discover people to connect</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -117,10 +161,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#efefef',
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
     color: '#262626',
+  },
+  backButton: {
+    padding: 4,
+    marginRight: 8,
   },
   newMessageButton: {
     padding: 4,
@@ -193,6 +245,49 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#efefef',
     marginLeft: 84,
+  },
+  emptyContainer: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  emptySubtitle: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  primaryButton: {
+    marginTop: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: '#0A66C2',
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    marginTop: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  secondaryButtonText: {
+    color: '#374151',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

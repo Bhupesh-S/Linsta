@@ -8,6 +8,9 @@ import { setSocketIO } from "../modules/notifications/notification.service";
 // Map to track connected users: userId -> socketId
 export const connectedUsers = new Map<string, string>();
 
+// Map to track last-seen time for users
+export const userLastSeen = new Map<string, Date>();
+
 // Initialize Socket.IO
 export const initializeSocket = (server: HTTPServer): SocketIOServer => {
   const io = new SocketIOServer(server, {
@@ -46,6 +49,7 @@ export const initializeSocket = (server: HTTPServer): SocketIOServer => {
 
     // Track connected user
     connectedUsers.set(userId, socket.id);
+    userLastSeen.set(userId, new Date());
     console.log(`✓ User ${userId} connected with socket ${socket.id}`);
 
     // Initialize chat events
@@ -57,6 +61,7 @@ export const initializeSocket = (server: HTTPServer): SocketIOServer => {
     // Disconnect handler
     socket.on("disconnect", () => {
       connectedUsers.delete(userId);
+      userLastSeen.set(userId, new Date());
       console.log(`✗ User ${userId} disconnected`);
     });
 

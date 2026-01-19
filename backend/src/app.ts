@@ -10,6 +10,7 @@ import storyRoutes from "./modules/posts/story.routes";
 import notificationRoutes from "./modules/notifications/notification.routes";
 import chatRoutes from "./modules/chat/chat.routes";
 import analyticsRoutes from "./modules/analytics/analytics.routes";
+import networkRoutes from "./modules/network/network.routes";
 
 const app: Express = express();
 
@@ -27,5 +28,6 @@ app.use("/api/stories", storyRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/network", networkRoutes);
 
 export default app;

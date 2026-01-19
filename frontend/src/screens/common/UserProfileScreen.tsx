@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNetwork } from '../../hooks/useNetwork';
+import { NetworkStats } from '../../types/network.types';
 
 interface UserProfileScreenProps {
   route?: any;
@@ -22,19 +24,23 @@ const imageSize = (width - 6) / 3; // 3 columns with 2px gaps
 const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ route, navigation }) => {
   const { userId } = route?.params ?? {};
   const [activeTab, setActiveTab] = useState<'posts' | 'media' | 'about'>('posts');
+  const { getUserStats, followUser, unfollowUser } = useNetwork();
+  const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [loadingFollow, setLoadingFollow] = useState(false);
 
   // Mock user data
   const user = {
-    id: userId || 'user_1',
+    id: userId || '',
     name: 'Priya Sharma',
     username: '@priyasharma',
     bio: 'Digital Marketing Specialist | Content Creator | Travel Enthusiast 🌍',
     location: 'Mumbai, India',
     website: 'priyasharma.com',
     stats: {
-      posts: 127,
-      followers: 2453,
-      following: 892,
+      posts: 0,
+      followers: 0,
+      following: 0,
     },
     media: [
       'https://picsum.photos/400/400?random=1',
@@ -47,6 +53,37 @@ const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ route, navigation
       'https://picsum.photos/400/400?random=8',
       'https://picsum.photos/400/400?random=9',
     ],
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadStats = async () => {
+      if (!user.id) return;
+      const stats = await getUserStats(user.id);
+      if (isMounted && stats) {
+        setNetworkStats(stats);
+      }
+    };
+    loadStats();
+    return () => {
+      isMounted = false;
+    };
+  }, [getUserStats, user.id]);
+
+  const handleFollowToggle = async () => {
+    if (!user.id) return;
+    try {
+      setLoadingFollow(true);
+      if (isFollowing) {
+        await unfollowUser(user.id);
+        setIsFollowing(false);
+      } else {
+        await followUser(user.id);
+        setIsFollowing(true);
+      }
+    } finally {
+      setLoadingFollow(false);
+    }
   };
 
   const renderTabContent = () => {
@@ -126,20 +163,30 @@ const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ route, navigation
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{user.stats.followers.toLocaleString()}</Text>
+              <Text style={styles.statValue}>
+                {(networkStats?.followersCount ?? user.stats.followers).toLocaleString()}
+              </Text>
               <Text style={styles.statLabel}>Followers</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{user.stats.following.toLocaleString()}</Text>
+              <Text style={styles.statValue}>
+                {(networkStats?.followingCount ?? user.stats.following).toLocaleString()}
+              </Text>
               <Text style={styles.statLabel}>Following</Text>
             </View>
           </View>
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.followButton}>
-              <Text style={styles.followButtonText}>Follow</Text>
+            <TouchableOpacity
+              style={styles.followButton}
+              onPress={handleFollowToggle}
+              disabled={loadingFollow || !user.id}
+            >
+              <Text style={styles.followButtonText}>
+                {isFollowing ? 'Following' : 'Follow'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.messageButton}

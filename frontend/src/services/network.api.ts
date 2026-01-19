@@ -14,6 +14,7 @@ import {
   SearchFilters,
   ConnectRequest,
   ConnectionResponse,
+  NetworkStats,
 } from '../types/network.types';
 
 /**
@@ -27,6 +28,24 @@ export interface NetworkAPI {
    * Returns suggested users for networking
    */
   getSuggestions(): Promise<SuggestionsResponse>;
+
+  /**
+   * GET /network/connections
+   * Get all connections for current user
+   */
+  getConnections(): Promise<SuggestionsResponse>;
+
+  /**
+   * GET /network/followers
+   * Get all followers of current user
+   */
+  getFollowers(): Promise<SuggestionsResponse>;
+
+  /**
+   * GET /network/following
+   * Get all users the current user is following
+   */
+  getFollowing(): Promise<SuggestionsResponse>;
 
   /**
    * GET /network/search?query={query}&filters={filters}
@@ -110,5 +129,11 @@ export interface NetworkAPI {
    * GET /network/stats
    * Get user's network statistics
    */
-  getNetworkStats(): Promise<any>;
+  getNetworkStats(): Promise<NetworkStats>;
+
+  /**
+   * GET /network/stats/{userId}
+   * Get network statistics for a specific user
+   */
+  getUserStats(userId: string): Promise<NetworkStats>;
 }

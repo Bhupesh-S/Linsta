@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { networkAPI } from '../services/network.mock';
+import { networkAPI } from '../services/network.http';
 import {
   NetworkUser,
   Community,
@@ -24,6 +24,9 @@ export const useNetwork = () => {
   const [searchResults, setSearchResults] = useState<NetworkUser[]>([]);
   const [communities, setCommunities] = useState<Community[]>([]);
   const [requests, setRequests] = useState<ConnectionRequest[]>([]);
+  const [connections, setConnections] = useState<NetworkUser[]>([]);
+  const [followers, setFollowers] = useState<NetworkUser[]>([]);
+  const [following, setFollowing] = useState<NetworkUser[]>([]);
   const [stats, setStats] = useState<NetworkStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +91,51 @@ export const useNetwork = () => {
     loadPersistedData();
   }, []);
 
+  // Load connections list
+  const loadConnections = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await networkAPI.getConnections();
+      setConnections(response.users);
+    } catch (err) {
+      setError('Failed to load connections');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load followers list
+  const loadFollowers = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await networkAPI.getFollowers();
+      setFollowers(response.users);
+    } catch (err) {
+      setError('Failed to load followers');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load following list
+  const loadFollowing = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await networkAPI.getFollowing();
+      setFollowing(response.users);
+    } catch (err) {
+      setError('Failed to load following');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Load suggestions
   const loadSuggestions = useCallback(async () => {
     try {
@@ -127,12 +175,12 @@ export const useNetwork = () => {
       const response = await networkAPI.sendConnectionRequest({ userId, message });
       
       if (response.success) {
-        // Update local state
+        // Update local state: outgoing request from current user
         setSuggestions(prev =>
-          prev.map(u => (u.id === userId ? { ...u, connectionStatus: 'pending' } : u))
+          prev.map(u => (u.id === userId ? { ...u, connectionStatus: 'requested' } : u))
         );
         setSearchResults(prev =>
-          prev.map(u => (u.id === userId ? { ...u, connectionStatus: 'pending' } : u))
+          prev.map(u => (u.id === userId ? { ...u, connectionStatus: 'requested' } : u))
         );
       }
       
@@ -196,6 +244,9 @@ export const useNetwork = () => {
         const statsResponse = await networkAPI.getNetworkStats();
         setStats(statsResponse);
         await saveStats(statsResponse);
+
+        // Refresh connections list to include the new connection
+        await loadConnections();
       }
       
       return response;
@@ -206,7 +257,7 @@ export const useNetwork = () => {
     } finally {
       setLoading(false);
     }
-  }, [requests]);
+  }, [requests, loadConnections]);
 
   // Reject connection request
   const rejectRequest = useCallback(async (requestId: string) => {
@@ -250,6 +301,7 @@ export const useNetwork = () => {
         setSearchResults(prev =>
           prev.map(u => (u.id === userId ? { ...u, connectionStatus: 'none' } : u))
         );
+        await loadConnections();
         loadNetworkStats();
       }
       
@@ -336,6 +388,17 @@ export const useNetwork = () => {
     }
   }, []);
 
+  // Get network stats for a specific user
+  const getUserStats = useCallback(async (userId: string) => {
+    try {
+      const response = await networkAPI.getUserStats(userId);
+      return response;
+    } catch (err) {
+      console.error('Failed to load user stats', err);
+      return null;
+    }
+  }, []);
+
   // Load connection requests
   const loadConnectionRequests = useCallback(async () => {
     try {
@@ -382,6 +445,10 @@ export const useNetwork = () => {
         // Reload stats
         const statsResponse = await networkAPI.getNetworkStats();
         setStats(statsResponse);
+
+        // Refresh followers/following lists
+        await loadFollowers();
+        await loadFollowing();
       }
       
       return response;
@@ -438,27 +505,37 @@ export const useNetwork = () => {
   }, []);
 
   // Block user
-  const blockUser = useCallback(async (userId: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await networkAPI.blockUser(userId);
-      
-      if (response.success) {
-        // Remove from suggestions and search results
-        setSuggestions(prev => prev.filter(u => u.id !== userId));
-        setSearchResults(prev => prev.filter(u => u.id !== userId));
+  const blockUser = useCallback(
+    async (userId: string) => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await networkAPI.blockUser(userId);
+
+        if (response.success) {
+          // Remove from suggestions and search results immediately
+          setSuggestions(prev => prev.filter(u => u.id !== userId));
+          setSearchResults(prev => prev.filter(u => u.id !== userId));
+
+          // Refresh connections/followers/following and stats to reflect the block
+          await loadConnections();
+          await loadFollowers();
+          await loadFollowing();
+          const statsResponse = await networkAPI.getNetworkStats();
+          setStats(statsResponse);
+        }
+
+        return response;
+      } catch (err) {
+        setError('Failed to block user');
+        console.error(err);
+        throw err;
+      } finally {
+        setLoading(false);
       }
-      
-      return response;
-    } catch (err) {
-      setError('Failed to block user');
-      console.error(err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [loadConnections, loadFollowers, loadFollowing]
+  );
 
   // Unblock user
   const unblockUser = useCallback(async (userId: string) => {
@@ -498,7 +575,18 @@ export const useNetwork = () => {
     loadCommunities();
     loadConnectionRequests();
     loadNetworkStats();
-  }, [loadSuggestions, loadCommunities, loadConnectionRequests, loadNetworkStats]);
+    loadConnections();
+    loadFollowers();
+    loadFollowing();
+  }, [
+    loadSuggestions,
+    loadCommunities,
+    loadConnectionRequests,
+    loadNetworkStats,
+    loadConnections,
+    loadFollowers,
+    loadFollowing,
+  ]);
 
   return {
     // State
@@ -506,6 +594,9 @@ export const useNetwork = () => {
     searchResults,
     communities,
     requests,
+    connections,
+    followers,
+    following,
     stats,
     loading,
     error,
@@ -523,8 +614,12 @@ export const useNetwork = () => {
     joinCommunity,
     leaveCommunity,
     checkMessagingPermission,
+    getUserStats,
     loadSuggestions,
     loadCommunities,
     loadConnectionRequests,
+    loadConnections,
+    loadFollowers,
+    loadFollowing,
   };
 };

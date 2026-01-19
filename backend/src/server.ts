@@ -26,7 +26,7 @@ const startServer = async (): Promise<void> => {
       console.log(`✓ Server running on port ${PORT}`);
       console.log(`✓ Socket.IO initialized`);
       console.log(`✓ Accessible at http://localhost:${PORT}`);
-      console.log(`✓ PRIMARY: http://192.168.43.114:${PORT} (Wi-Fi) ⭐`);
+      console.log(`✓ PRIMARY: http://10.90.116.188:${PORT} (Wi-Fi) ⭐`);
       console.log(`✓ Accessible at http://192.168.56.1:${PORT} (Ethernet)`);
       console.log(`✓ Accessible at http://10.0.2.2:${PORT} (Android Emulator)`);
     });

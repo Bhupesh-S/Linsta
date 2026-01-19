@@ -17,7 +17,7 @@ interface ProfilePreviewModalProps {
   user: NetworkUser | null;
   onClose: () => void;
   onConnect: (userId: string) => Promise<void>;
-  onMessage: (userId: string) => void;
+  onMessage: (userId: string, name: string) => void;
   checkMessagingPermission: (userId: string) => Promise<{ canMessage: boolean; reason?: string }>;
 }
 
@@ -64,7 +64,7 @@ export const ProfilePreviewModal: React.FC<ProfilePreviewModalProps> = ({
 
   const handleMessage = () => {
     if (user && canMessage) {
-      onMessage(user.id);
+      onMessage(user.id, user.name);
       onClose();
     }
   };

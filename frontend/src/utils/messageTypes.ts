@@ -6,6 +6,11 @@ export interface Message {
   text: string;
   timestamp: string;
   read: boolean;
+  deleted?: boolean;
+  mediaUrl?: string | null;
+  mediaType?: 'image' | 'video' | null;
+  replyToId?: string | null;
+  readBy?: string[];
 }
 
 export interface User {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { NetworkUser } from '../../types/network.types';
+import { NetworkUser, NetworkStats } from '../../types/network.types';
+import { useNetwork } from '../../hooks/useNetwork';
 
 interface UserProfileDetailScreenProps {
   route: {
@@ -24,6 +26,141 @@ export const UserProfileDetailScreen: React.FC<UserProfileDetailScreenProps> = (
   navigation,
 }) => {
   const { user } = route.params;
+  const {
+    followUser,
+    unfollowUser,
+    sendConnectionRequest,
+    getUserStats,
+    removeConnection,
+    blockUser,
+  } = useNetwork();
+
+  const [profileUser, setProfileUser] = useState<NetworkUser>(user);
+  const [stats, setStats] = useState<NetworkStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [updating, setUpdating] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadStats = async () => {
+      try {
+        setLoadingStats(true);
+        const result = await getUserStats(profileUser.id);
+        if (isMounted && result) {
+          setStats(result);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingStats(false);
+        }
+      }
+    };
+
+    loadStats();
+    return () => {
+      isMounted = false;
+    };
+  }, [getUserStats, profileUser.id]);
+
+  const handleConnectPress = async () => {
+    if (profileUser.connectionStatus === 'connected' || profileUser.connectionStatus === 'requested') {
+      return;
+    }
+    try {
+      setUpdating(true);
+      const result = await sendConnectionRequest(profileUser.id);
+      if (result?.success) {
+        setProfileUser(prev => ({ ...prev, connectionStatus: 'requested' }));
+      }
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleFollowPress = async () => {
+    try {
+      setUpdating(true);
+      const currentStatus = profileUser.followStatus || 'not_following';
+      if (currentStatus === 'following' || currentStatus === 'mutual') {
+        await unfollowUser(profileUser.id);
+        setProfileUser(prev => ({
+          ...prev,
+          followStatus: currentStatus === 'mutual' ? 'followed_by' : 'not_following',
+        }));
+      } else {
+        await followUser(profileUser.id);
+        setProfileUser(prev => ({
+          ...prev,
+          followStatus: currentStatus === 'followed_by' ? 'mutual' : 'following',
+        }));
+      }
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleRemoveConnection = () => {
+    if (profileUser.connectionStatus !== 'connected') return;
+    Alert.alert(
+      'Remove connection',
+      `Are you sure you want to remove your connection with ${profileUser.name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setUpdating(true);
+              const response = await removeConnection(profileUser.id);
+              if (response?.success) {
+                setProfileUser(prev => ({ ...prev, connectionStatus: 'none' }));
+              }
+            } finally {
+              setUpdating(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleBlockUser = () => {
+    Alert.alert(
+      'Block user',
+      `You will no longer see updates from ${profileUser.name}, and they will not be able to interact with you.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setUpdating(true);
+              const response = await blockUser(profileUser.id);
+              if (response?.success) {
+                navigation.goBack();
+              }
+            } finally {
+              setUpdating(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleMorePress = () => {
+    const isConnected = profileUser.connectionStatus === 'connected';
+    const buttons: { text: string; onPress?: () => void; style?: 'default' | 'cancel' | 'destructive' }[] = [];
+    if (isConnected) {
+      buttons.push({ text: 'Remove connection', onPress: handleRemoveConnection });
+    }
+    buttons.push({ text: 'Block user', style: 'destructive', onPress: handleBlockUser });
+    buttons.push({ text: 'Cancel', style: 'cancel' });
+
+    Alert.alert('More options', '', buttons);
+  };
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -33,7 +170,7 @@ export const UserProfileDetailScreen: React.FC<UserProfileDetailScreenProps> = (
       >
         <Ionicons name="arrow-back" size={24} color="#111827" />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.moreButton}>
+      <TouchableOpacity style={styles.moreButton} onPress={handleMorePress}>
         <Ionicons name="ellipsis-horizontal" size={24} color="#111827" />
       </TouchableOpacity>
     </View>
@@ -42,23 +179,21 @@ export const UserProfileDetailScreen: React.FC<UserProfileDetailScreenProps> = (
   const renderProfileHeader = () => (
     <View style={styles.profileHeader}>
       <View style={styles.avatarContainer}>
-        {user.avatarUrl ? (
-          <Image source={{ uri: user.avatarUrl }} style={styles.avatar} />
+        {profileUser.avatarUrl ? (
+          <Image source={{ uri: profileUser.avatarUrl }} style={styles.avatar} />
         ) : (
           <View style={styles.avatarPlaceholder}>
             <Ionicons name="person" size={48} color="#fff" />
           </View>
         )}
       </View>
-      
-      <Text style={styles.name}>{user.name}</Text>
-      <Text style={styles.role}>{user.role}</Text>
-      <Text style={styles.organization}>{user.organization}</Text>
-      
-      {user.location && (
+      <Text style={styles.name}>{profileUser.name}</Text>
+      <Text style={styles.role}>{profileUser.role}</Text>
+      <Text style={styles.organization}>{profileUser.organization}</Text>
+      {profileUser.location && (
         <View style={styles.locationContainer}>
           <Ionicons name="location-outline" size={16} color="#6b7280" />
-          <Text style={styles.location}>{user.location}</Text>
+          <Text style={styles.location}>{profileUser.location}</Text>
         </View>
       )}
     </View>
@@ -69,14 +204,19 @@ export const UserProfileDetailScreen: React.FC<UserProfileDetailScreenProps> = (
     let statusColor = '#6b7280';
     let statusBg = '#f3f4f6';
 
-    switch (user.connectionStatus) {
+    switch (profileUser.connectionStatus) {
       case 'connected':
         statusText = 'Connected';
         statusColor = '#059669';
         statusBg = '#d1fae5';
         break;
-      case 'pending':
+      case 'requested':
         statusText = 'Request Sent';
+        statusColor = '#d97706';
+        statusBg = '#fef3c7';
+        break;
+      case 'pending':
+        statusText = 'Pending Your Response';
         statusColor = '#d97706';
         statusBg = '#fef3c7';
         break;
@@ -114,29 +254,45 @@ export const UserProfileDetailScreen: React.FC<UserProfileDetailScreenProps> = (
 
   const renderActionButtons = () => (
     <View style={styles.actionButtons}>
-      {user.connectionStatus === 'connected' ? (
+      {profileUser.connectionStatus === 'connected' ? (
         <>
-          <TouchableOpacity style={styles.primaryButton}>
+          <TouchableOpacity style={styles.primaryButton} disabled={updating}>
             <Ionicons name="chatbubble-outline" size={20} color="#fff" />
             <Text style={styles.primaryButtonText}>Message</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton}>
+          <TouchableOpacity style={styles.secondaryButton} disabled={updating}>
             <Ionicons name="call-outline" size={20} color="#0A66C2" />
           </TouchableOpacity>
         </>
-      ) : user.connectionStatus === 'pending' ? (
+      ) : profileUser.connectionStatus === 'pending' || profileUser.connectionStatus === 'requested' ? (
         <TouchableOpacity style={styles.disabledButton} disabled>
           <Text style={styles.disabledButtonText}>Request Pending</Text>
         </TouchableOpacity>
       ) : (
         <>
-          <TouchableOpacity style={styles.primaryButton}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={handleConnectPress}
+            disabled={updating}
+          >
             <Ionicons name="person-add-outline" size={20} color="#fff" />
             <Text style={styles.primaryButtonText}>Connect</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={handleFollowPress}
+            disabled={updating}
+          >
             <Ionicons name="add-outline" size={20} color="#0A66C2" />
-            <Text style={styles.secondaryButtonText}>Follow</Text>
+            <Text style={styles.secondaryButtonText}>
+              {profileUser.followStatus === 'mutual'
+                ? 'Mutual'
+                : profileUser.followStatus === 'following'
+                ? 'Following'
+                : profileUser.followStatus === 'followed_by'
+                ? 'Follow back'
+                : 'Follow'}
+            </Text>
           </TouchableOpacity>
         </>
       )}
@@ -171,24 +327,8 @@ export const UserProfileDetailScreen: React.FC<UserProfileDetailScreenProps> = (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Activity</Text>
-        <TouchableOpacity>
-          <Text style={styles.seeAllText}>See all</Text>
-        </TouchableOpacity>
       </View>
-      <View style={styles.activityItem}>
-        <Ionicons name="document-text-outline" size={24} color="#6b7280" />
-        <View style={styles.activityContent}>
-          <Text style={styles.activityTitle}>Posted an article</Text>
-          <Text style={styles.activityTime}>2 days ago</Text>
-        </View>
-      </View>
-      <View style={styles.activityItem}>
-        <Ionicons name="people-outline" size={24} color="#6b7280" />
-        <View style={styles.activityContent}>
-          <Text style={styles.activityTitle}>Attended Tech Summit 2024</Text>
-          <Text style={styles.activityTime}>1 week ago</Text>
-        </View>
-      </View>
+      <Text style={styles.emptyText}>No recent public activity</Text>
     </View>
   );
 

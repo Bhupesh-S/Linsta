@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from '../screens/home/HomeScreen';
 import EventsDiscoveryScreen from '../screens/events/EventsDiscoveryScreen';
 import EventDetailScreen from '../screens/events/EventDetailScreen';
@@ -14,6 +15,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignupScreen';
 import OTPVerificationScreen from '../screens/auth/OTPVerificationScreen';
 import OAuthSelectionScreen from '../screens/auth/OAuthSelectionScreen';
+import OnboardingScreen from '../screens/auth/OnboardingScreen';
 import { Event } from '../utils/eventTypes';
 import MyTicketsScreen from '../pages/tickets/MyTicketsScreen';
 import TicketDetailScreen from '../pages/tickets/TicketDetailScreen';
@@ -32,6 +34,7 @@ import { UserProfileDetailScreen } from '../screens/network/UserProfileDetailScr
 
 import ConnectionsScreen from '../pages/network/ConnectionsScreen';
 import CommunitiesScreen from '../pages/network/CommunitiesScreen';
+import CommunityDetailScreen from '../pages/network/CommunityDetailScreen';
 import MessagesScreen from '../screens/messages/MessagesScreen';
 import ChatScreen from '../screens/common/ChatScreen';
 import NotificationsScreen from '../pages/notifications/NotificationsScreen';
@@ -42,6 +45,7 @@ import { UserStatus } from '../types/userTypes';
 
 type Screen =
   | 'Splash'
+  | 'Onboarding'
   | 'Login'
   | 'Signup'
   | 'OTPVerification'
@@ -72,6 +76,7 @@ type Screen =
   | 'Network'
   | 'Connections'
   | 'Communities'
+  | 'CommunityDetail'
   | 'Messages'
   | 'Chat'
   | 'Notifications'
@@ -140,14 +145,29 @@ const AppNavigatorInner = () => {
   };
 
 
+  const initAfterSplash = async () => {
+    if (isAuthenticated) {
+      setNavState((s) => ({ ...s, currentScreen: 'Home' }));
+      return;
+    }
+
+    try {
+      const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
+      if (!hasSeenOnboarding) {
+        setNavState((s) => ({ ...s, currentScreen: 'Onboarding' }));
+      } else {
+        setNavState((s) => ({ ...s, currentScreen: 'Login' }));
+      }
+    } catch (error) {
+      setNavState((s) => ({ ...s, currentScreen: 'Login' }));
+    }
+  };
+
+
   const handleSplashFinish = () => {
     // Check auth state from AuthContext
     console.log('⏱️ Splash finished, isAuthenticated:', isAuthenticated);
-    if (isAuthenticated) {
-      setNavState({ ...navState, currentScreen: 'Home' });
-    } else {
-      setNavState((s) => ({ ...s, currentScreen: 'Login' }));
-    }
+    initAfterSplash();
   };
 
   const handleLoginSuccess = async (isNewUser: boolean) => {
@@ -193,6 +213,9 @@ const AppNavigatorInner = () => {
     switch (navState.currentScreen) {
       case 'Splash':
         return <SplashScreen onFinish={handleSplashFinish} />;
+
+      case 'Onboarding':
+        return <OnboardingScreen navigation={navigation} />;
 
       case 'Login':
         return <LoginScreen navigation={navigation} onLoginSuccess={handleLoginSuccess} />;
@@ -280,6 +303,8 @@ const AppNavigatorInner = () => {
         return <ConnectionsScreen navigation={navigation} />;
       case 'Communities':
         return <CommunitiesScreen navigation={navigation} />;
+      case 'CommunityDetail':
+        return <CommunityDetailScreen navigation={navigation} route={{ params: navState.currentParams }} />;
       case 'Messages':
         return <MessagesScreen navigation={navigation} />;
       case 'Chat':

@@ -11,8 +11,11 @@ import {
   Alert,
   StyleSheet,
   RefreshControl,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNetwork } from '../hooks/useNetwork';
 import { useMessages } from '../context/MessageContext';
@@ -311,71 +314,128 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Network</Text>
-        </View>
-      </View>
-
-      {/* First Visit Banner */}
-      {showFirstVisitBanner && (
-        <View style={styles.banner}>
-          <View style={styles.bannerContent}>
-            <View style={styles.bannerTextContainer}>
-              <Text style={styles.bannerTitle}>
-                Follow = see public updates
-              </Text>
-              <Text style={styles.bannerSubtitle}>
-                Connect = professional relationship (mutual approval)
-              </Text>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A66C2" />
+      
+      {/* Enhanced Header with Gradient */}
+      <LinearGradient
+        colors={['#0A66C2', '#378FE9', '#5B93D6']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={styles.networkIconContainer}>
+              <Ionicons name="people" size={26} color="#FFFFFF" />
             </View>
-            <TouchableOpacity onPress={() => setShowFirstVisitBanner(false)} style={styles.bannerClose}>
-              <Ionicons name="close" size={20} color="#1e40af" />
+            <View>
+              <Text style={styles.headerTitle}>My Network</Text>
+              <Text style={styles.headerSubtitle}>Build your connections</Text>
+            </View>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.headerIconButton}>
+              <Ionicons name="search" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerIconButton}>
+              <Ionicons name="notifications-outline" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
+      </LinearGradient>
+
+      {/* Enhanced Info Banner */}
+      {showFirstVisitBanner && (
+        <View style={styles.banner}>
+          <LinearGradient
+            colors={['#EFF6FF', '#DBEAFE']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.bannerGradient}
+          >
+            <View style={styles.bannerIconContainer}>
+              <Ionicons name="information-circle" size={22} color="#0A66C2" />
+            </View>
+            <View style={styles.bannerContent}>
+              <View style={styles.bannerTextContainer}>
+                <Text style={styles.bannerTitle}>
+                  💙 Follow = see public updates
+                </Text>
+                <Text style={styles.bannerSubtitle}>
+                  🤝 Connect = professional relationship (mutual)
+                </Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => setShowFirstVisitBanner(false)} 
+                style={styles.bannerClose}
+                activeOpacity={0.7}
+              >
+                <View style={styles.closeButton}>
+                  <Ionicons name="close" size={18} color="#0A66C2" />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </View>
       )}
 
-      {/* Stats */}
+      {/* Enhanced Stats Section */}
       {stats && (
-        <View style={styles.statsContainer}>
+        <View style={styles.statsCard}>
           <View style={styles.statsRow}>
             <TouchableOpacity
               style={styles.statItem}
               onPress={() => navigation?.navigate?.('Connections', { initialTab: 'connections' })}
+              activeOpacity={0.7}
             >
+              <View style={[styles.statIconContainer, { backgroundColor: '#DBEAFE' }]}>
+                <Ionicons name="people" size={20} color="#0A66C2" />
+              </View>
               <Text style={styles.statValue}>{stats.connectionsCount}</Text>
               <Text style={styles.statLabel}>Connections</Text>
             </TouchableOpacity>
+            
+            <View style={styles.statDivider} />
+            
             <TouchableOpacity
               style={styles.statItem}
               onPress={() => navigation?.navigate?.('Connections', { initialTab: 'followers' })}
+              activeOpacity={0.7}
             >
+              <View style={[styles.statIconContainer, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="heart" size={20} color="#F59E0B" />
+              </View>
               <Text style={styles.statValue}>{stats.followersCount}</Text>
               <Text style={styles.statLabel}>Followers</Text>
             </TouchableOpacity>
+            
+            <View style={styles.statDivider} />
+            
             <TouchableOpacity
               style={styles.statItem}
               onPress={() => navigation?.navigate?.('Connections', { initialTab: 'following' })}
+              activeOpacity={0.7}
             >
+              <View style={[styles.statIconContainer, { backgroundColor: '#E0F2FE' }]}>
+                <Ionicons name="eye" size={20} color="#06B6D4" />
+              </View>
               <Text style={styles.statValue}>{stats.followingCount}</Text>
               <Text style={styles.statLabel}>Following</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.statItem}
-              onPress={() => navigation?.navigate?.('Communities')}
-            >
-              <Text style={styles.statValue}>{communities.length}</Text>
-              <Text style={styles.statLabel}>Communities</Text>
-            </TouchableOpacity>
+            
+            <View style={styles.statDivider} />
+            
             <TouchableOpacity
               style={styles.statItem}
               onPress={() => setActiveTab('requests')}
+              activeOpacity={0.7}
             >
+              <View style={[styles.statIconContainer, { backgroundColor: '#FEE2E2' }]}>
+                <Ionicons name="mail" size={20} color="#EF4444" />
+              </View>
               <Text style={styles.statValue}>{stats.pendingRequestsCount}</Text>
-              <Text style={styles.statLabel}>Pending</Text>
+              <Text style={styles.statLabel}>Requests</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -513,24 +573,69 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#F3F6F8',
+  },
+  headerGradient: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0A66C2',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   header: {
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  networkIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
   },
   badge: {
     backgroundColor: '#ef4444',
@@ -544,30 +649,79 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   banner: {
-    backgroundColor: '#eff6ff',
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  bannerGradient: {
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#dbeafe',
+  },
+  bannerIconContainer: {
+    marginBottom: 8,
   },
   bannerContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    justifyContent: 'space-between',
   },
   bannerTextContainer: {
     flex: 1,
+    paddingRight: 12,
   },
   bannerTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1e3a8a',
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0A66C2',
+    marginBottom: 6,
+    letterSpacing: 0.2,
   },
   bannerSubtitle: {
     fontSize: 14,
-    color: '#1d4ed8',
+    color: '#1D4ED8',
+    lineHeight: 20,
+    fontWeight: '500',
   },
   bannerClose: {
-    marginLeft: 8,
+    marginTop: -4,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(10, 102, 194, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statsCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   statsContainer: {
     backgroundColor: '#fff',
@@ -579,18 +733,37 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    alignItems: 'center',
   },
   statItem: {
     alignItems: 'center',
+    flex: 1,
+  },
+  statIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   statValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginTop: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#666666',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  statDivider: {
+    width: 1,
+    height: 50,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 4,
   },
   tabsContainer: {
     backgroundColor: '#fff',

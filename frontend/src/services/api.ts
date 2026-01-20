@@ -339,7 +339,6 @@ export const getAuthHeader = async (): Promise<{ Authorization: string }> => {
     throw new Error('No authentication token found');
   }
 
-  console.log('🔑 Token retrieved for auth header:', token.substring(0, 20) + '...');
   return { Authorization: `Bearer ${token}` };
 };
 

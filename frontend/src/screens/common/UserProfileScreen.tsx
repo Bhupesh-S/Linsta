@@ -7,8 +7,11 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNetwork } from '../../hooks/useNetwork';
 import { NetworkStats } from '../../types/network.types';
@@ -132,23 +135,43 @@ const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ route, navigation
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#262626" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{user.username}</Text>
-        <TouchableOpacity style={styles.moreButton}>
-          <Ionicons name="ellipsis-vertical" size={24} color="#262626" />
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A66C2" />
+      
+      {/* Header with Gradient */}
+      <LinearGradient
+        colors={['#0A66C2', '#378FE9']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{user.name}</Text>
+          <TouchableOpacity style={styles.moreButton}>
+            <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
-      <ScrollView>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Profile Info */}
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
-            <Ionicons name="person-circle" size={100} color="#0A66C2" />
+            <View style={styles.avatarWrapper}>
+              <LinearGradient
+                colors={['#0A66C2', '#378FE9', '#5B93D6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.avatarGradient}
+              >
+                <View style={styles.avatarInner}>
+                  <Ionicons name="person-circle" size={96} color="#0A66C2" />
+                </View>
+              </LinearGradient>
+            </View>
           </View>
 
           <Text style={styles.name}>{user.name}</Text>
@@ -241,35 +264,89 @@ const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ route, navigation
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F3F6F8',
+  },
+  headerGradient: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#efefef',
+    paddingVertical: 14,
   },
   backButton: {
-    padding: 4,
+    padding: 6,
+    width: 36,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#262626',
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    letterSpacing: 0.3,
   },
   moreButton: {
-    padding: 4,
+    padding: 6,
+    width: 36,
   },
   profileSection: {
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingVertical: 30,
     paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   avatarContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
+  },
+  avatarWrapper: {
+    width: 110,
+    height: 110,
+  },
+  avatarGradient: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInner: {
+    width: 102,
+    height: 102,
+    borderRadius: 51,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
   },
   name: {
     fontSize: 24,
@@ -349,6 +426,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: '#efefef',
+    backgroundColor: '#FFFFFF',
+    marginTop: 16,
   },
   tab: {
     flex: 1,

@@ -39,6 +39,16 @@ import MessagesScreen from '../screens/messages/MessagesScreen';
 import ChatScreen from '../screens/common/ChatScreen';
 import NotificationsScreen from '../pages/notifications/NotificationsScreen';
 import NotificationSettingsScreen from '../pages/notifications/NotificationSettingsScreen';
+import ResumeBuilderHome from '../pages/resume/ResumeBuilderHome';
+import AIAnalysisScreen from '../pages/resume/AIAnalysisScreen';
+import CreateResumeScreen from '../pages/resume/CreateResumeScreen';
+import CoverLetterScreen from '../pages/resume/CoverLetterScreen';
+import SkillGapScreen from '../pages/resume/SkillGapScreen';
+import JobsHomeScreen from '../pages/jobs/JobsHomeScreen';
+import JobDetailScreen from '../pages/jobs/JobDetailScreen';
+import InterviewPrepScreen from '../pages/jobs/InterviewPrepScreen';
+import ApplicationsScreen from '../pages/jobs/ApplicationsScreen';
+import CompanyDetailScreen from '../pages/jobs/CompanyDetailScreen';
 import { UserProvider, useUser } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
 import { UserStatus } from '../types/userTypes';
@@ -80,7 +90,17 @@ type Screen =
   | 'Messages'
   | 'Chat'
   | 'Notifications'
-  | 'NotificationSettings';
+  | 'NotificationSettings'
+  | 'ResumeBuilder'
+  | 'AIAnalysis'
+  | 'CreateResume'
+  | 'CoverLetter'
+  | 'SkillGap'
+  | 'Jobs'
+  | 'JobDetail'
+  | 'InterviewPrep'
+  | 'Applications'
+  | 'CompanyDetail';
 
 type NavEntry = {
   screen: Screen;
@@ -313,6 +333,26 @@ const AppNavigatorInner = () => {
         return <NotificationsScreen navigation={navigation} />;
       case 'NotificationSettings':
         return <NotificationSettingsScreen navigation={navigation} />;
+      case 'ResumeBuilder':
+        return <ResumeBuilderHome navigation={navigation} />;
+      case 'AIAnalysis':
+        return <AIAnalysisScreen navigation={navigation} route={{ params: navState.currentParams }} />;
+      case 'CreateResume':
+        return <CreateResumeScreen navigation={navigation} />;
+      case 'CoverLetter':
+        return <CoverLetterScreen navigation={navigation} route={{ params: navState.currentParams }} />;
+      case 'SkillGap':
+        return <SkillGapScreen navigation={navigation} route={{ params: navState.currentParams }} />;
+      case 'Jobs':
+        return <JobsHomeScreen navigation={navigation} />;
+      case 'JobDetail':
+        return <JobDetailScreen navigation={navigation} route={{ params: navState.currentParams }} />;
+      case 'InterviewPrep':
+        return <InterviewPrepScreen navigation={navigation} route={{ params: navState.currentParams }} />;
+      case 'Applications':
+        return <ApplicationsScreen navigation={navigation} />;
+      case 'CompanyDetail':
+        return <CompanyDetailScreen navigation={navigation} route={{ params: navState.currentParams }} />;
       default:
         return <HomeScreen navigation={navigation} />;
     }

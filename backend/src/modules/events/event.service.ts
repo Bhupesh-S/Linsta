@@ -226,6 +226,8 @@ export class EventService {
 
   // Get events user has RSVP'd to (My Tickets)
   static async getMyTickets(userId: string): Promise<any[]> {
+    console.log('🎟️ EventService.getMyTickets - userId:', userId);
+    
     const rsvps = await EventRsvp.find({ userId: new Types.ObjectId(userId) })
       .populate({
         path: 'eventId',
@@ -236,9 +238,44 @@ export class EventService {
       })
       .sort({ registeredAt: -1 });
 
-    return rsvps.map((rsvp) => ({
-      ...rsvp.eventId,
-      rsvpDate: rsvp.registeredAt,
-    }));
+    console.log(`📋 Found ${rsvps.length} RSVPs for user`);
+
+    // Filter out RSVPs where event was deleted and map to proper format
+    const tickets = rsvps
+      .filter((rsvp) => {
+        if (!rsvp.eventId) {
+          console.warn('⚠️ RSVP has no eventId (event may have been deleted)');
+          return false;
+        }
+        return true;
+      })
+      .map((rsvp) => {
+        const event = rsvp.eventId as any;
+        return {
+          _id: event._id?.toString() || '',
+          title: event.title || 'Unknown Event',
+          description: event.description || '',
+          date: event.date || new Date(),
+          location: event.location || '',
+          category: event.category || 'other',
+          coverImage: event.coverImage || '',
+          createdBy: event.createdBy
+            ? {
+                _id: event.createdBy._id?.toString() || '',
+                name: event.createdBy.name || 'Unknown',
+                email: event.createdBy.email || '',
+              }
+            : undefined,
+          attendeeCount: event.attendeeCount || 0,
+          price: event.price || 0,
+          maxAttendees: event.maxAttendees,
+          rsvpDate: rsvp.registeredAt,
+          createdAt: event.createdAt,
+          updatedAt: event.updatedAt,
+        };
+      });
+
+    console.log(`✅ Returning ${tickets.length} valid tickets`);
+    return tickets;
   }
 }

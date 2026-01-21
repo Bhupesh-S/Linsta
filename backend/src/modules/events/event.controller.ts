@@ -229,14 +229,19 @@ export class EventController {
     try {
       const userId = req.userId;
 
+      console.log('🎟️ getMyTickets called for userId:', userId);
+
       if (!userId) {
+        console.error('❌ No userId found in request');
         res.status(401).json({ error: "User not authenticated" });
         return;
       }
 
       const tickets = await EventService.getMyTickets(userId);
+      console.log(`✅ Found ${tickets.length} tickets for user ${userId}`);
       res.status(200).json(tickets);
     } catch (error: any) {
+      console.error('❌ Error in getMyTickets:', error);
       res.status(500).json({ error: error.message });
     }
   }

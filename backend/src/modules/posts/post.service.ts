@@ -112,27 +112,27 @@ export class PostService {
         const userLiked = await Like.findOne({ postId: post._id, userId: new Types.ObjectId(userId) });
 
         return {
-          _id: post._id.toString(),
-          authorId: post.authorId.toString(),
-          eventId: post.eventId ? post.eventId.toString() : undefined,
-          caption: post.caption,
+          _id: post._id?.toString() || '',
+          authorId: post.authorId ? (typeof post.authorId === 'string' ? post.authorId : post.authorId.toString()) : '',
+          eventId: post.eventId ? (typeof post.eventId === 'string' ? post.eventId : post.eventId.toString()) : undefined,
+          caption: post.caption || '',
           media: media.map((m) => ({
-            _id: m._id.toString(),
-            postId: m.postId.toString(),
+            _id: m._id?.toString() || '',
+            postId: m.postId?.toString() || '',
             mediaType: m.mediaType,
             mediaUrl: m.mediaUrl,
           })),
-          author: post.authorId
+          author: post.authorId && (post.authorId as any)._id
             ? {
-                _id: (post.authorId as any)._id.toString(),
-                name: (post.authorId as any).name,
-                email: (post.authorId as any).email,
+                _id: (post.authorId as any)._id?.toString() || '',
+                name: (post.authorId as any).name || 'Unknown',
+                email: (post.authorId as any).email || '',
               }
             : undefined,
-          event: post.eventId
+          event: post.eventId && (post.eventId as any)._id
             ? {
-                _id: (post.eventId as any)._id.toString(),
-                title: (post.eventId as any).title,
+                _id: (post.eventId as any)._id?.toString() || '',
+                title: (post.eventId as any).title || 'Unknown Event',
               }
             : undefined,
           likeCount,
@@ -169,27 +169,27 @@ export class PostService {
       : null;
 
     return {
-      _id: post._id.toString(),
-      authorId: post.authorId.toString(),
-      eventId: post.eventId ? post.eventId.toString() : undefined,
-      caption: post.caption,
+      _id: post._id?.toString() || '',
+      authorId: post.authorId ? (typeof post.authorId === 'string' ? post.authorId : post.authorId.toString()) : '',
+      eventId: post.eventId ? (typeof post.eventId === 'string' ? post.eventId : post.eventId.toString()) : undefined,
+      caption: post.caption || '',
       media: media.map((m) => ({
-        _id: m._id.toString(),
-        postId: m.postId.toString(),
+        _id: m._id?.toString() || '',
+        postId: m.postId?.toString() || '',
         mediaType: m.mediaType,
         mediaUrl: m.mediaUrl,
       })),
-      author: post.authorId
+      author: post.authorId && (post.authorId as any)._id
         ? {
-            _id: (post.authorId as any)._id.toString(),
-            name: (post.authorId as any).name,
-            email: (post.authorId as any).email,
+            _id: (post.authorId as any)._id?.toString() || '',
+            name: (post.authorId as any).name || 'Unknown',
+            email: (post.authorId as any).email || '',
           }
         : undefined,
-      event: post.eventId
+      event: post.eventId && (post.eventId as any)._id
         ? {
-            _id: (post.eventId as any)._id.toString(),
-            title: (post.eventId as any).title,
+            _id: (post.eventId as any)._id?.toString() || '',
+            title: (post.eventId as any).title || 'Unknown Event',
           }
         : undefined,
       likeCount,

@@ -65,15 +65,39 @@ const CreateContentScreen: React.FC<CreateContentScreenProps> = ({ navigation })
         }
       },
     },
+    {
+      id: 'resume',
+      icon: 'document-text',
+      label: 'Resume Builder',
+      description: 'Create AI-powered professional resumes',
+      gradient: ['#10B981', '#059669'] as const,
+      onPress: () => {
+        if (navigation) {
+          navigation.navigate('ResumeBuilder');
+        }
+      },
+    },
+    {
+      id: 'jobs',
+      icon: 'briefcase',
+      label: 'Jobs',
+      description: 'Find your dream job with AI matching',
+      gradient: ['#3B82F6', '#2563EB'] as const,
+      onPress: () => {
+        if (navigation) {
+          navigation.navigate('Jobs');
+        }
+      },
+    },
   ];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation?.goBack()}
         >
@@ -86,7 +110,7 @@ const CreateContentScreen: React.FC<CreateContentScreenProps> = ({ navigation })
       {/* Content Grid */}
       <View style={styles.content}>
         <Text style={styles.subtitle}>What would you like to share?</Text>
-        
+
         <View style={styles.grid}>
           {contentOptions.map((option, index) => (
             <TouchableOpacity

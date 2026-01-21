@@ -49,8 +49,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   // Combine user articles with mock posts and sort by timestamp
   const allPosts = useMemo(() => {
-    console.log('[HomeScreen] userArticles count:', userArticles.length);
-    console.log('[HomeScreen] userArticles:', userArticles);
     const combined = [...userArticles, ...mockPosts];
     // Sort by timestamp (newest first)
     return combined.sort((a, b) => {
@@ -323,6 +321,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   feedContent: {
+    paddingTop: 8, // Small gap between stories and feed
     paddingBottom: 90, // Increased to account for fixed bottom navigation
   },
 });

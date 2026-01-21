@@ -4,6 +4,8 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { StoryProvider } from './src/context/StoryContext';
 import { ArticleProvider } from './src/context/ArticleContext';
+import { EventProvider } from './src/context/EventContext';
+import { MessageProvider } from './src/context/MessageContext';
 
 export default function App() {
   return (
@@ -11,8 +13,12 @@ export default function App() {
       <ThemeProvider>
         <StoryProvider>
           <ArticleProvider>
-            <StatusBar style="auto" />
-            <AppNavigator />
+            <EventProvider>
+              <MessageProvider>
+                <StatusBar style="auto" />
+                <AppNavigator />
+              </MessageProvider>
+            </EventProvider>
           </ArticleProvider>
         </StoryProvider>
       </ThemeProvider>

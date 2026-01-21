@@ -80,22 +80,12 @@ const CreateArticleScreen: React.FC<CreateArticleScreenProps> = ({ navigation })
     try {
       // Don't save drafts to feed, only published articles
       if (!isDraft) {
-        console.log('[CreateArticleScreen] Publishing article...');
-        console.log('[CreateArticleScreen] Article data:', {
-          user: currentUser,
-          title: title.trim(),
-          content: content.trim(),
-          coverImage: coverImageUri || undefined,
-        });
         await addArticle({
           user: currentUser,
           title: title.trim(),
           content: content.trim(),
           coverImage: coverImageUri || undefined,
         });
-        console.log('[CreateArticleScreen] Article published successfully');
-      } else {
-        console.log('[CreateArticleScreen] Saving as draft (not added to feed)');
       }
       
       // Reset form

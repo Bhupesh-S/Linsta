@@ -84,7 +84,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, onLoginSuccess })
   };
 
   const handleSignUp = () => {
-    console.log('Sign Up clicked, navigating to Signup screen');
     navigation?.navigate('Signup');
   };
 

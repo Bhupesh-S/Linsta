@@ -60,7 +60,21 @@ router.get("/status/:userId", authMiddleware, async (req: Request, res: Response
 router.put("/profile", authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
-    const { university, course, year, skills, interests } = req.body;
+    const { 
+      headline, 
+      bio, 
+      location, 
+      website, 
+      university, 
+      course, 
+      year, 
+      skills, 
+      interests,
+      openToWork,
+      openToWorkRoles,
+      experience,
+      education
+    } = req.body;
 
     // Fetch user
     const user = await User.findById(userId).select("-password");
@@ -69,16 +83,26 @@ router.put("/profile", authMiddleware, async (req: Request, res: Response): Prom
       return;
     }
 
+    // Build update object
+    const updateData: any = {};
+    if (headline !== undefined) updateData.headline = headline;
+    if (bio !== undefined) updateData.bio = bio;
+    if (location !== undefined) updateData.location = location;
+    if (website !== undefined) updateData.website = website;
+    if (university !== undefined) updateData.university = university;
+    if (course !== undefined) updateData.course = course;
+    if (year !== undefined) updateData.year = year;
+    if (skills !== undefined) updateData.skills = skills || [];
+    if (interests !== undefined) updateData.interests = interests || [];
+    if (openToWork !== undefined) updateData.openToWork = openToWork;
+    if (openToWorkRoles !== undefined) updateData.openToWorkRoles = openToWorkRoles || [];
+    if (experience !== undefined) updateData.experience = experience || [];
+    if (education !== undefined) updateData.education = education || [];
+
     // Update or create profile
     const profile = await UserProfile.findOneAndUpdate(
       { userId },
-      {
-        university,
-        course,
-        year,
-        skills: skills || [],
-        interests: interests || [],
-      },
+      updateData,
       { new: true, upsert: true }
     );
 
@@ -137,6 +161,73 @@ router.post("/profile/image", authMiddleware, upload.single('profileImage'), asy
   } catch (error: any) {
     console.error('Profile image upload error:', error);
     res.status(500).json({ error: error.message || 'Failed to upload profile image' });
+  }
+});
+
+// POST /api/users/profile/cover - Upload cover image
+router.post("/profile/cover", authMiddleware, upload.single('coverImage'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId;
+
+    if (!req.file) {
+      res.status(400).json({ error: "No image file provided" });
+      return;
+    }
+
+    // Upload to Cloudinary
+    const imageUrl = await uploadProfileImage(req.file.buffer);
+
+    // Update profile with cover image URL
+    const profile = await UserProfile.findOneAndUpdate(
+      { userId },
+      { coverImageUrl: imageUrl },
+      { new: true, upsert: true }
+    );
+
+    // Fetch user data
+    const user = await User.findById(userId).select("-password");
+
+    res.status(200).json({
+      user: {
+        id: user?._id,
+        name: user?.name,
+        email: user?.email,
+        createdAt: user?.createdAt,
+      },
+      profile,
+    });
+  } catch (error: any) {
+    console.error('Cover image upload error:', error);
+    res.status(500).json({ error: error.message || 'Failed to upload cover image' });
+  }
+});
+
+// GET /api/users/:userId/profile - Get public profile
+router.get("/:userId/profile", authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+
+    // Fetch user
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    // Fetch profile
+    const profile = await UserProfile.findOne({ userId });
+
+    res.status(200).json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        createdAt: user.createdAt,
+      },
+      profile,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 

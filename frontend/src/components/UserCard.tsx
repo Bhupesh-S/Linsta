@@ -101,8 +101,8 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onConnect, onViewProfi
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
-    padding: 16,
-    marginBottom: 12,
+    padding: 14,
+    marginBottom: 10,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -112,9 +112,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#dbeafe',
     alignItems: 'center',
     justifyContent: 'center',
@@ -124,14 +124,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   userName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#111827',
   },
   userRole: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6b7280',
-    marginTop: 2,
+    marginTop: 1,
   },
   userOrg: {
     fontSize: 14,
@@ -165,8 +165,8 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   connectedButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     backgroundColor: '#e5e7eb',
     borderRadius: 20,
   },
@@ -176,8 +176,8 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   pendingButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     backgroundColor: '#dbeafe',
     borderRadius: 20,
   },
@@ -187,8 +187,8 @@ const styles = StyleSheet.create({
     color: '#2563eb',
   },
   connectButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     backgroundColor: '#2563eb',
     borderRadius: 20,
   },

@@ -108,6 +108,26 @@ export class PostController {
     }
   }
 
+  // GET /api/posts/user/:userId - Get posts by specific user
+  static async getUserPosts(req: Request, res: Response): Promise<void> {
+    try {
+      const { userId: targetUserId } = req.params;
+      const currentUserId = req.userId;
+      const limit = Math.min(Number(req.query.limit) || 20, 100);
+      const skip = Number(req.query.skip) || 0;
+
+      if (!currentUserId) {
+        res.status(401).json({ error: "User not authenticated" });
+        return;
+      }
+
+      const posts = await PostService.getUserPosts(targetUserId, currentUserId, limit, skip);
+      res.status(200).json(posts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
   // GET /api/posts/:id - Get single post
   static async getPost(req: Request, res: Response): Promise<void> {
     try {

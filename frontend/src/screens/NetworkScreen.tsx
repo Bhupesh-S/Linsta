@@ -1,6 +1,6 @@
 // NetworkScreen - Main networking interface
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
-  RefreshControl,
   Platform,
   StatusBar,
 } from 'react-native';
@@ -21,14 +20,13 @@ import { useNetwork } from '../hooks/useNetwork';
 import { useMessages } from '../context/MessageContext';
 import { UserCard } from '../components/UserCard';
 import { CommunityCard } from '../components/CommunityCard';
-import { ProfilePreviewModal } from '../components/ProfilePreviewModal';
+import { JobCard } from '../components/JobCard';
 import { NetworkUser, SearchFilters } from '../types/network.types';
-import { postsApi, Post as BackendPost } from '../services/posts.api';
-import PostCard from '../components/PostCard';
+import { jobsApi, Job } from '../services/jobs.api';
 import BottomNavigation from '../components/BottomNavigation';
 import CreateContentModal from '../components/CreateContentModal';
 
-type TabType = 'feed' | 'connections' | 'suggestions' | 'requests';
+type TabType = 'suggestions' | 'requests' | 'jobs' | 'communities';
 
 interface NetworkScreenProps {
   navigation?: any;
@@ -59,53 +57,34 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>({});
-  const [selectedUser, setSelectedUser] = useState<NetworkUser | null>(null);
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [showFirstVisitBanner, setShowFirstVisitBanner] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [savedJobs, setSavedJobs] = useState<string[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobsError, setJobsError] = useState<string | null>(null);
 
-  // Network feed state (real posts from backend)
-  const [feedPosts, setFeedPosts] = useState<BackendPost[]>([]);
-  const [feedLoading, setFeedLoading] = useState(false);
-  const [feedRefreshing, setFeedRefreshing] = useState(false);
-  const [feedError, setFeedError] = useState<string | null>(null);
-
-  const loadFeed = useCallback(async (isRefresh: boolean = false) => {
-    if (!isRefresh) {
-      setFeedLoading(true);
-    }
-    setFeedError(null);
+  // Load jobs from API
+  const loadJobs = async () => {
+    setJobsLoading(true);
+    setJobsError(null);
     try {
-      const posts = await postsApi.getFeed(20, 0);
-      setFeedPosts(posts);
-    } catch (err) {
-      console.error('Failed to load network feed', err);
-      setFeedError('Failed to load network feed');
+      const result = await jobsApi.getJobs(1, 20);
+      setJobs(result.jobs);
+    } catch (error: any) {
+      console.error('Failed to load jobs:', error);
+      setJobsError(error.message || 'Failed to load jobs');
     } finally {
-      if (!isRefresh) {
-        setFeedLoading(false);
-      }
+      setJobsLoading(false);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    if (activeTab === 'feed' && feedPosts.length === 0 && !feedLoading) {
-      loadFeed(false);
+  // Load jobs when jobs tab is active
+  React.useEffect(() => {
+    if (activeTab === 'jobs' && jobs.length === 0 && !jobsLoading) {
+      loadJobs();
     }
-  }, [activeTab, feedPosts.length, feedLoading, loadFeed]);
-
-  const handleRefreshFeed = useCallback(async () => {
-    setFeedRefreshing(true);
-    try {
-      await loadFeed(true);
-    } finally {
-      setFeedRefreshing(false);
-    }
-  }, [loadFeed]);
-
-  const handlePostDeleted = useCallback((postId: string) => {
-    setFeedPosts(prev => prev.filter(p => p._id !== postId));
-  }, []);
+  }, [activeTab]);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -123,8 +102,38 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   };
 
   const handleViewProfile = (user: NetworkUser) => {
-    setSelectedUser(user);
-    setShowProfileModal(true);
+    navigation?.navigate('UserProfile', { userId: user.id, user });
+  };
+
+  const handleApplyJob = async (jobId: string) => {
+    try {
+      await jobsApi.applyForJob(jobId);
+      Alert.alert(
+        'Success',
+        'Your application has been submitted successfully!',
+        [{ text: 'OK' }]
+      );
+    } catch (error: any) {
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to submit application',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleSaveJob = (jobId: string) => {
+    if (savedJobs.includes(jobId)) {
+      setSavedJobs(savedJobs.filter(id => id !== jobId));
+      Alert.alert('Job Removed', 'Job removed from saved jobs');
+    } else {
+      setSavedJobs([...savedJobs, jobId]);
+      Alert.alert('Job Saved', 'Job added to saved jobs');
+    }
+  };
+
+  const handleJobPress = (job: Job) => {
+    navigation?.navigate('JobDetail', { job });
   };
 
   const handleMessage = async (userId: string, name: string) => {
@@ -250,60 +259,46 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
           </View>
         );
 
-      case 'connections':
-        const connectedUsers = connections;
+      case 'jobs':
         return (
           <View>
-            {connectedUsers.length > 0 ? (
-              connectedUsers.map(user => (
-                <UserCard
-                  key={user.id}
-                  user={user}
-                  onConnect={handleConnect}
-                  onViewProfile={handleViewProfile}
+            {jobs.length > 0 ? (
+              jobs.map(job => (
+                <JobCard
+                  key={job.id}
+                  job={job}
+                  onApply={handleApplyJob}
+                  onPress={handleJobPress}
                 />
               ))
             ) : (
               <View style={styles.emptyContainer}>
-                <Ionicons name="people-outline" size={64} color="#d1d5db" />
-                <Text style={styles.emptyText}>No connections yet</Text>
-                <Text style={styles.emptySubtext}>Start connecting with people to build your network</Text>
+                <Ionicons name="briefcase-outline" size={64} color="#d1d5db" />
+                <Text style={styles.emptyText}>No jobs available</Text>
+                <Text style={styles.emptySubtext}>Check back later for new opportunities</Text>
               </View>
             )}
           </View>
         );
 
-      case 'feed':
-        if (feedLoading && feedPosts.length === 0) {
-          return (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#0a66c2" />
-            </View>
-          );
-        }
-
+      case 'communities':
         return (
           <View>
-            {feedError && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{feedError}</Text>
-              </View>
-            )}
-
-            {feedPosts.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="briefcase-outline" size={64} color="#d1d5db" />
-                <Text style={styles.emptyText}>No updates in your network yet</Text>
-                <Text style={styles.emptySubtext}>
-                  Start posting and connecting to see professional updates here.
-                </Text>
-              </View>
-            ) : (
-              feedPosts.map(post => (
-                <View key={post._id} style={{ marginBottom: 16 }}>
-                  <PostCard post={post} onPostDeleted={() => handlePostDeleted(post._id)} />
-                </View>
+            {communities.length > 0 ? (
+              communities.map(community => (
+                <CommunityCard
+                  key={community.id}
+                  community={community}
+                  onJoin={joinCommunity}
+                  onLeave={leaveCommunity}
+                />
               ))
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="people-outline" size={64} color="#d1d5db" />
+                <Text style={styles.emptyText}>No communities available</Text>
+                <Text style={styles.emptySubtext}>Join communities to connect with like-minded professionals</Text>
+              </View>
             )}
           </View>
         );
@@ -380,71 +375,10 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
         </View>
       )}
 
-      {/* Enhanced Stats Section */}
-      {stats && (
-        <View style={styles.statsCard}>
-          <View style={styles.statsRow}>
-            <TouchableOpacity
-              style={styles.statItem}
-              onPress={() => navigation?.navigate?.('Connections', { initialTab: 'connections' })}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.statIconContainer, { backgroundColor: '#DBEAFE' }]}>
-                <Ionicons name="people" size={20} color="#0A66C2" />
-              </View>
-              <Text style={styles.statValue}>{stats.connectionsCount}</Text>
-              <Text style={styles.statLabel}>Connections</Text>
-            </TouchableOpacity>
-            
-            <View style={styles.statDivider} />
-            
-            <TouchableOpacity
-              style={styles.statItem}
-              onPress={() => navigation?.navigate?.('Connections', { initialTab: 'followers' })}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.statIconContainer, { backgroundColor: '#FEF3C7' }]}>
-                <Ionicons name="heart" size={20} color="#F59E0B" />
-              </View>
-              <Text style={styles.statValue}>{stats.followersCount}</Text>
-              <Text style={styles.statLabel}>Followers</Text>
-            </TouchableOpacity>
-            
-            <View style={styles.statDivider} />
-            
-            <TouchableOpacity
-              style={styles.statItem}
-              onPress={() => navigation?.navigate?.('Connections', { initialTab: 'following' })}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.statIconContainer, { backgroundColor: '#E0F2FE' }]}>
-                <Ionicons name="eye" size={20} color="#06B6D4" />
-              </View>
-              <Text style={styles.statValue}>{stats.followingCount}</Text>
-              <Text style={styles.statLabel}>Following</Text>
-            </TouchableOpacity>
-            
-            <View style={styles.statDivider} />
-            
-            <TouchableOpacity
-              style={styles.statItem}
-              onPress={() => setActiveTab('requests')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.statIconContainer, { backgroundColor: '#FEE2E2' }]}>
-                <Ionicons name="mail" size={20} color="#EF4444" />
-              </View>
-              <Text style={styles.statValue}>{stats.pendingRequestsCount}</Text>
-              <Text style={styles.statLabel}>Requests</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
-          {(['feed', 'connections', 'suggestions', 'requests'] as TabType[]).map(tab => (
+          {(['suggestions', 'jobs', 'communities', 'requests'] as TabType[]).map(tab => (
             <TouchableOpacity
               key={tab}
               onPress={() => setActiveTab(tab)}
@@ -465,11 +399,11 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
           <TextInput
             style={styles.searchInput}
             placeholder={
-              activeTab === 'feed' ? 'Search people in your network...' :
-              activeTab === 'connections' ? 'Search connections...' :
               activeTab === 'suggestions' ? 'Search suggestions...' :
+              activeTab === 'jobs' ? 'Search jobs...' :
+              activeTab === 'communities' ? 'Search communities...' :
               activeTab === 'requests' ? 'Search requests...' :
-              'Search people...'
+              'Search...'
             }
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -487,18 +421,6 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
-        refreshControl={
-          activeTab === 'feed'
-            ? (
-                <RefreshControl
-                  refreshing={feedRefreshing}
-                  onRefresh={handleRefreshFeed}
-                  colors={["#0A66C2"]}
-                  tintColor="#0A66C2"
-                />
-              )
-            : undefined
-        }
       >
         {error && (
           <View style={styles.errorContainer}>
@@ -523,32 +445,9 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
         ) : (
           renderTabContent()
         )}
-
-        {/* Communities Section */}
-        {activeTab === 'suggestions' && !searchQuery && (
-          <View style={styles.communitiesSection}>
-            <Text style={styles.communitiesTitle}>Communities</Text>
-            {communities.map(community => (
-              <CommunityCard
-                key={community.id}
-                community={community}
-                onJoin={joinCommunity}
-                onLeave={leaveCommunity}
-              />
-            ))}
-          </View>
-        )}
       </ScrollView>
 
-      {/* Profile Preview Modal */}
-      <ProfilePreviewModal
-        visible={showProfileModal}
-        user={selectedUser}
-        onClose={() => setShowProfileModal(false)}
-        onConnect={handleConnect}
-        onMessage={handleMessage}
-        checkMessagingPermission={checkMessagingPermission}
-      />
+
 
       {/* Bottom Navigation */}
       <BottomNavigation 
@@ -650,8 +549,8 @@ const styles = StyleSheet.create({
   },
   banner: {
     marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 16,
+    marginTop: 8,
+    borderRadius: 12,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
@@ -666,7 +565,7 @@ const styles = StyleSheet.create({
     }),
   },
   bannerGradient: {
-    padding: 16,
+    padding: 12,
   },
   bannerIconContainer: {
     marginBottom: 8,
@@ -681,16 +580,16 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   bannerTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#0A66C2',
-    marginBottom: 6,
+    marginBottom: 4,
     letterSpacing: 0.2,
   },
   bannerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#1D4ED8',
-    lineHeight: 20,
+    lineHeight: 18,
     fontWeight: '500',
   },
   bannerClose: {
@@ -707,19 +606,20 @@ const styles = StyleSheet.create({
   statsCard: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
-    marginTop: 12,
-    paddingVertical: 20,
+    marginTop: 8,
+    marginBottom: 8,
+    paddingVertical: 16,
     paddingHorizontal: 12,
-    borderRadius: 16,
+    borderRadius: 12,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 4,
+        elevation: 3,
       },
     }),
   },
@@ -732,12 +632,15 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 2,
+    gap: 4,
   },
   statItem: {
     alignItems: 'center',
     flex: 1,
+    paddingVertical: 4,
   },
   statIconContainer: {
     width: 44,
@@ -748,21 +651,27 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: '#1A1A1A',
-    marginTop: 4,
+    marginTop: 2,
+    marginBottom: 1,
+  },
+  statValueZero: {
+    opacity: 0.5,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#666666',
-    marginTop: 4,
-    fontWeight: '600',
+    fontSize: 10,
+    color: '#9CA3AF',
+    marginTop: 2,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+    textTransform: 'capitalize',
   },
   statDivider: {
     width: 1,
     height: 50,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#F3F4F6',
     marginHorizontal: 4,
   },
   tabsContainer: {
@@ -792,7 +701,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     backgroundColor: '#fff',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
@@ -801,7 +710,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f3f4f6',
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 8,
   },
   searchInput: {
@@ -815,8 +724,8 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingBottom: 100, // Increased to account for fixed bottom navigation
+    paddingVertical: 12,
+    paddingBottom: 90,
   },
   loadingContainer: {
     flex: 1,

@@ -6,11 +6,16 @@ import { Job } from '../types/job.types';
 interface JobCardProps {
   job: Job;
   onApply: (jobId: string) => void;
+  onPress?: (job: Job) => void;
 }
 
-export const JobCard: React.FC<JobCardProps> = ({ job, onApply }) => {
+export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onPress }) => {
   return (
-    <View style={styles.card}>
+    <TouchableOpacity 
+      style={styles.card}
+      onPress={() => onPress?.(job)}
+      activeOpacity={0.7}
+    >
       <View style={styles.header}>
         <View style={styles.logoContainer}>
           <Ionicons name={job.logo as any || 'briefcase'} size={40} color="#0A66C2" />
@@ -56,12 +61,15 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply }) => {
         </View>
         <TouchableOpacity
           style={styles.applyButton}
-          onPress={() => onApply(job.id)}
+          onPress={(e) => {
+            e.stopPropagation();
+            onApply(job.id);
+          }}
         >
           <Text style={styles.applyButtonText}>Apply</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

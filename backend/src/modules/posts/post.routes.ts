@@ -7,7 +7,8 @@ import { uploadImage, uploadVideo } from "../../config/cloudinary";
 
 const router = Router();
 
-// Public routes
+// Public routes - Specific routes must come before generic /:id routes
+router.get("/user/:userId", authMiddleware, PostController.getUserPosts);
 router.get("/:id", PostController.getPost);
 router.get("/:id/comments", PostController.getComments);
 

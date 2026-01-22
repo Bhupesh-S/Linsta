@@ -171,6 +171,33 @@ export const postsApi = {
     }
   },
 
+  // Get posts by specific user
+  getUserPosts: async (userId: string, limit: number = 20, skip: number = 0): Promise<Post[]> => {
+    try {
+      const apiUrl = await getApiUrl();
+      const headers = await getAuthHeaders();
+      
+      console.log(`📱 Fetching posts for user ${userId}: limit=${limit}, skip=${skip}`);
+      
+      const response = await fetch(`${apiUrl}/api/posts/user/${userId}?limit=${limit}&skip=${skip}`, {
+        method: 'GET',
+        headers,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch user posts');
+      }
+
+      console.log(`✅ User posts fetched: ${result.length} posts`);
+      return result;
+    } catch (error) {
+      console.error('❌ Fetch user posts error:', error);
+      throw error;
+    }
+  },
+
   // Get a single post
   getPost: async (postId: string): Promise<Post> => {
     try {

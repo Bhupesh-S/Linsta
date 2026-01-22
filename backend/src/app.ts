@@ -11,6 +11,7 @@ import notificationRoutes from "./modules/notifications/notification.routes";
 import chatRoutes from "./modules/chat/chat.routes";
 import analyticsRoutes from "./modules/analytics/analytics.routes";
 import networkRoutes from "./modules/network/network.routes";
+import jobsRoutes from "./modules/jobs/jobs.routes";
 
 const app: Express = express();
 
@@ -29,5 +30,6 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/network", networkRoutes);
+app.use("/api/jobs", jobsRoutes);
 
 export default app;

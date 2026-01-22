@@ -27,10 +27,11 @@ import RSVPConfirmationScreen from '../pages/rsvp/RSVPConfirmationScreen';
 import RegistrationFormScreen from '../pages/rsvp/RegistrationFormScreen';
 import RegistrationSuccessScreen from '../pages/rsvp/RegistrationSuccessScreen';
 import EditEventScreen from '../pages/organizer/EditEventScreen';
-import ProfileScreen from '../pages/profile/ProfileScreen';
-import EditProfileScreen from '../pages/profile/EditProfileScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
 import UserProfileScreen from '../screens/common/UserProfileScreen';
 import { UserProfileDetailScreen } from '../screens/network/UserProfileDetailScreen';
+import JobDetailScreen from '../screens/JobDetailScreen';
 
 import ConnectionsScreen from '../pages/network/ConnectionsScreen';
 import CommunitiesScreen from '../pages/network/CommunitiesScreen';
@@ -80,7 +81,8 @@ type Screen =
   | 'Messages'
   | 'Chat'
   | 'Notifications'
-  | 'NotificationSettings';
+  | 'NotificationSettings'
+  | 'JobDetail';
 
 type NavEntry = {
   screen: Screen;
@@ -292,6 +294,8 @@ const AppNavigatorInner = () => {
         return <EditEventScreen navigation={navigation} />;
       case 'Profile':
         return <ProfileScreen navigation={navigation} />;
+      case 'EditProfile':
+        return <EditProfileScreen navigation={navigation} route={navState.currentParams ? { params: navState.currentParams } : undefined} />;
       case 'ProfileEdit':
         return <EditProfileScreen navigation={navigation} />;
       case 'UserProfile':
@@ -313,6 +317,8 @@ const AppNavigatorInner = () => {
         return <NotificationsScreen navigation={navigation} />;
       case 'NotificationSettings':
         return <NotificationSettingsScreen navigation={navigation} />;
+      case 'JobDetail':
+        return <JobDetailScreen navigation={navigation} route={{ params: navState.currentParams }} />;
       default:
         return <HomeScreen navigation={navigation} />;
     }

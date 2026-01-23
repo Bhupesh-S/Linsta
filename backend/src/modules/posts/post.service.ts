@@ -200,6 +200,72 @@ export class PostService {
     };
   }
 
+  // Get posts by a specific user
+  static async getUserPosts(
+    targetUserId: string,
+    currentUserId: string,
+    limit: number = 20,
+    skip: number = 0
+  ): Promise<PostResponse[]> {
+    try {
+      const posts = await Post.find({ authorId: new Types.ObjectId(targetUserId) })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .populate("authorId", "name email")
+        .populate("eventId", "title");
+
+      // Fetch likes and comments for each post
+      const postsWithEngagement = await Promise.all(
+        posts.map(async (post) => {
+          const media = await PostMedia.find({ postId: post._id });
+          const likeCount = await Like.countDocuments({ postId: post._id });
+          const commentCount = await Comment.countDocuments({ postId: post._id });
+          const userLiked = await Like.findOne({
+            postId: post._id,
+            userId: new Types.ObjectId(currentUserId),
+          });
+
+          return {
+            _id: post._id?.toString() || '',
+            authorId: post.authorId ? (typeof post.authorId === 'string' ? post.authorId : post.authorId.toString()) : '',
+            eventId: post.eventId ? (typeof post.eventId === 'string' ? post.eventId : post.eventId.toString()) : undefined,
+            caption: post.caption || '',
+            media: media.map((m) => ({
+              _id: m._id?.toString() || '',
+              postId: m.postId?.toString() || '',
+              mediaType: m.mediaType,
+              mediaUrl: m.mediaUrl,
+            })),
+            author: post.authorId && (post.authorId as any)._id
+              ? {
+                  _id: (post.authorId as any)._id?.toString() || '',
+                  name: (post.authorId as any).name || 'Unknown',
+                  email: (post.authorId as any).email || '',
+                }
+              : undefined,
+            event: post.eventId && (post.eventId as any)._id
+              ? {
+                  _id: (post.eventId as any)._id?.toString() || '',
+                  title: (post.eventId as any).title || 'Unknown Event',
+                }
+              : undefined,
+            likeCount,
+            commentCount,
+            userLiked: !!userLiked,
+            createdAt: post.createdAt,
+            updatedAt: post.updatedAt,
+          };
+        })
+      );
+
+      return postsWithEngagement;
+    } catch (error) {
+      console.error('Get user posts error:', error);
+      throw error;
+    }
+  }
+
   // Like a post
   static async likePost(postId: string, userId: string): Promise<{ success: boolean; message: string }> {
     // Verify post exists

@@ -31,7 +31,6 @@ import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import UserProfileScreen from '../screens/common/UserProfileScreen';
 import { UserProfileDetailScreen } from '../screens/network/UserProfileDetailScreen';
-import JobDetailScreen from '../screens/JobDetailScreen';
 
 import ConnectionsScreen from '../pages/network/ConnectionsScreen';
 import CommunitiesScreen from '../pages/network/CommunitiesScreen';
@@ -81,6 +80,7 @@ type Screen =
   | 'RSVPSuccess'
   | 'EditEvent'
   | 'Profile'
+  | 'EditProfile'
   | 'ProfileEdit'
   | 'UserProfile'
   | 'UserProfileDetail'
@@ -92,9 +92,6 @@ type Screen =
   | 'Chat'
   | 'Notifications'
   | 'NotificationSettings'
-<<<<<<< HEAD
-  | 'JobDetail';
-=======
   | 'ResumeBuilder'
   | 'AIAnalysis'
   | 'CreateResume'
@@ -105,7 +102,6 @@ type Screen =
   | 'InterviewPrep'
   | 'Applications'
   | 'CompanyDetail';
->>>>>>> e50d2d9a07fcf93ee0c6641c0a67e701efb60956
 
 type NavEntry = {
   screen: Screen;
@@ -340,10 +336,6 @@ const AppNavigatorInner = () => {
         return <NotificationsScreen navigation={navigation} />;
       case 'NotificationSettings':
         return <NotificationSettingsScreen navigation={navigation} />;
-<<<<<<< HEAD
-      case 'JobDetail':
-        return <JobDetailScreen navigation={navigation} route={{ params: navState.currentParams }} />;
-=======
       case 'ResumeBuilder':
         return <ResumeBuilderHome navigation={navigation} />;
       case 'AIAnalysis':
@@ -364,7 +356,6 @@ const AppNavigatorInner = () => {
         return <ApplicationsScreen navigation={navigation} />;
       case 'CompanyDetail':
         return <CompanyDetailScreen navigation={navigation} route={{ params: navState.currentParams }} />;
->>>>>>> e50d2d9a07fcf93ee0c6641c0a67e701efb60956
       default:
         return <HomeScreen navigation={navigation} />;
     }

@@ -272,4 +272,34 @@ export class PostController {
       }
     }
   }
+
+  // GET /api/posts/user/:userId/likes - Get posts liked by user
+  static async getUserLikedPosts(req: Request, res: Response): Promise<void> {
+    try {
+      const { userId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const skip = parseInt(req.query.skip as string) || 0;
+
+      const posts = await PostService.getUserLikedPosts(userId, limit, skip);
+      res.status(200).json(posts);
+    } catch (error: any) {
+      console.error('Get user liked posts error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // GET /api/posts/user/:userId/comments - Get comments made by user
+  static async getUserComments(req: Request, res: Response): Promise<void> {
+    try {
+      const { userId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const skip = parseInt(req.query.skip as string) || 0;
+
+      const comments = await PostService.getUserComments(userId, limit, skip);
+      res.status(200).json(comments);
+    } catch (error: any) {
+      console.error('Get user comments error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
 }

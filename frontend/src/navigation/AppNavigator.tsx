@@ -265,6 +265,12 @@ const AppNavigatorInner = () => {
       case 'Events':
         return <EventsDiscoveryScreen navigation={navigation} />;
 
+      case 'Messages':
+        return <MessagesScreen navigation={navigation} />;
+
+      case 'Profile':
+        return <ProfileScreen navigation={navigation} />;
+
       case 'EventDetail':
         return (
           <EventDetailScreen

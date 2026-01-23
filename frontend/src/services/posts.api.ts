@@ -369,4 +369,52 @@ export const postsApi = {
       throw error;
     }
   },
+
+  // Get posts liked by user
+  getUserLikedPosts: async (userId: string, limit: number = 20, skip: number = 0): Promise<Post[]> => {
+    try {
+      const apiUrl = await getApiUrl();
+      const headers = await getAuthHeaders();
+      
+      const response = await fetch(`${apiUrl}/api/posts/user/${userId}/likes?limit=${limit}&skip=${skip}`, {
+        method: 'GET',
+        headers,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch liked posts');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('❌ Fetch liked posts error:', error);
+      throw error;
+    }
+  },
+
+  // Get comments made by user
+  getUserComments: async (userId: string, limit: number = 20, skip: number = 0): Promise<Comment[]> => {
+    try {
+      const apiUrl = await getApiUrl();
+      const headers = await getAuthHeaders();
+      
+      const response = await fetch(`${apiUrl}/api/posts/user/${userId}/comments?limit=${limit}&skip=${skip}`, {
+        method: 'GET',
+        headers,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch user comments');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('❌ Fetch user comments error:', error);
+      throw error;
+    }
+  },
 };

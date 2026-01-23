@@ -9,6 +9,8 @@ const router = Router();
 
 // Public routes - Specific routes must come before generic /:id routes
 router.get("/user/:userId", authMiddleware, PostController.getUserPosts);
+router.get("/user/:userId/likes", authMiddleware, PostController.getUserLikedPosts);
+router.get("/user/:userId/comments", authMiddleware, PostController.getUserComments);
 router.get("/:id", PostController.getPost);
 router.get("/:id/comments", PostController.getComments);
 

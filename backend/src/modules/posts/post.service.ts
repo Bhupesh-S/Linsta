@@ -113,6 +113,66 @@ export class PostService {
 
         return {
           _id: post._id.toString(),
+          authorId: post.authorId ? (typeof post.authorId === 'string' ? post.authorId : post.authorId.toString()) : '',
+          eventId: post.eventId ? (typeof post.eventId === 'string' ? post.eventId : post.eventId.toString()) : undefined,
+          caption: post.caption,
+          media: media.map((m) => ({
+            _id: m._id?.toString() || '',
+            postId: m.postId?.toString() || '',
+            mediaType: m.mediaType,
+            mediaUrl: m.mediaUrl,
+          })),
+          author: post.authorId && (post.authorId as any)._id
+            ? {
+                _id: (post.authorId as any)._id.toString(),
+                name: (post.authorId as any).name,
+                email: (post.authorId as any).email,
+              }
+            : undefined,
+          event: post.eventId && (post.eventId as any)._id
+            ? {
+                _id: (post.eventId as any)._id.toString(),
+                title: (post.eventId as any).title,
+              }
+            : undefined,
+          likeCount,
+          commentCount,
+          userLiked: !!userLiked,
+          createdAt: post.createdAt,
+          updatedAt: post.updatedAt,
+        };
+      })
+    );
+
+    return postsWithCounts;
+  }
+
+  // Get posts by a specific user
+  static async getUserPosts(
+    targetUserId: string,
+    currentUserId: string,
+    limit: number = 20,
+    skip: number = 0
+  ): Promise<PostResponse[]> {
+    const query: any = { authorId: new Types.ObjectId(targetUserId) };
+
+    const posts = await Post.find(query)
+      .populate("authorId", "name email")
+      .populate("eventId", "title")
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .skip(skip);
+
+    // Fetch likes and comments for each post
+    const postsWithCounts: PostResponse[] = await Promise.all(
+      posts.map(async (post) => {
+        const media = await PostMedia.find({ postId: post._id });
+        const likeCount = await Like.countDocuments({ postId: post._id });
+        const commentCount = await Comment.countDocuments({ postId: post._id });
+        const userLiked = await Like.findOne({ postId: post._id, userId: new Types.ObjectId(currentUserId) });
+
+        return {
+          _id: post._id.toString(),
           authorId: post.authorId.toString(),
           eventId: post.eventId ? post.eventId.toString() : undefined,
           caption: post.caption,
@@ -453,6 +513,58 @@ export class PostService {
     await Comment.deleteMany({ postId: new Types.ObjectId(postId) });
 
     return { success: true, message: "Post deleted successfully" };
+  }
+
+  // Get posts liked by a user
+  static async getUserLikedPosts(userId: string, limit: number = 20, skip: number = 0) {
+    try {
+      const likes = await Like.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .populate({
+          path: 'postId',
+          populate: {
+            path: 'authorId',
+            select: 'name email'
+          }
+        });
+
+      const posts = likes
+        .filter(like => like.postId)
+        .map(like => ({
+          ...((like.postId as any)._doc || like.postId),
+          likedAt: like.createdAt
+        }));
+
+      return posts;
+    } catch (error) {
+      console.error('Get user liked posts error:', error);
+      throw error;
+    }
+  }
+
+  // Get comments made by a user
+  static async getUserComments(userId: string, limit: number = 20, skip: number = 0) {
+    try {
+      const comments = await Comment.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .populate({
+          path: 'postId',
+          populate: {
+            path: 'authorId',
+            select: 'name email'
+          }
+        })
+        .populate('userId', 'name email');
+
+      return comments;
+    } catch (error) {
+      console.error('Get user comments error:', error);
+      throw error;
+    }
   }
 
   // Helper: Get author name by user ID

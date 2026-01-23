@@ -147,66 +147,6 @@ export class PostService {
     return postsWithCounts;
   }
 
-  // Get posts by a specific user
-  static async getUserPosts(
-    targetUserId: string,
-    currentUserId: string,
-    limit: number = 20,
-    skip: number = 0
-  ): Promise<PostResponse[]> {
-    const query: any = { authorId: new Types.ObjectId(targetUserId) };
-
-    const posts = await Post.find(query)
-      .populate("authorId", "name email")
-      .populate("eventId", "title")
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .skip(skip);
-
-    // Fetch likes and comments for each post
-    const postsWithCounts: PostResponse[] = await Promise.all(
-      posts.map(async (post) => {
-        const media = await PostMedia.find({ postId: post._id });
-        const likeCount = await Like.countDocuments({ postId: post._id });
-        const commentCount = await Comment.countDocuments({ postId: post._id });
-        const userLiked = await Like.findOne({ postId: post._id, userId: new Types.ObjectId(currentUserId) });
-
-        return {
-          _id: post._id.toString(),
-          authorId: post.authorId.toString(),
-          eventId: post.eventId ? post.eventId.toString() : undefined,
-          caption: post.caption,
-          media: media.map((m) => ({
-            _id: m._id?.toString() || '',
-            postId: m.postId?.toString() || '',
-            mediaType: m.mediaType,
-            mediaUrl: m.mediaUrl,
-          })),
-          author: post.authorId && (post.authorId as any)._id
-            ? {
-                _id: (post.authorId as any)._id.toString(),
-                name: (post.authorId as any).name,
-                email: (post.authorId as any).email,
-              }
-            : undefined,
-          event: post.eventId && (post.eventId as any)._id
-            ? {
-                _id: (post.eventId as any)._id.toString(),
-                title: (post.eventId as any).title,
-              }
-            : undefined,
-          likeCount,
-          commentCount,
-          userLiked: !!userLiked,
-          createdAt: post.createdAt,
-          updatedAt: post.updatedAt,
-        };
-      })
-    );
-
-    return postsWithCounts;
-  }
-
   // Get single post by ID
   static async getPostById(postId: string, userId?: string): Promise<PostResponse> {
     const post = await Post.findById(postId)

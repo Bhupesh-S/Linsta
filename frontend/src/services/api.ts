@@ -19,13 +19,13 @@ const getCommonUrls = (): string[] => {
   const urls = [
     'http://localhost:5000',        // Localhost/iOS simulator (PRIORITY)
     'http://127.0.0.1:5000',        // Localhost IP
-    'http://10.1.34.225:5000',      // Your PC's Current Wi-Fi IP (PRIMARY) ⭐
+    'http://192.168.29.219:5000',   // Your PC's Current Wi-Fi IP (PRIMARY) ⭐
+    'http://10.1.34.225:5000',      // Your PC's Previous Wi-Fi IP
     'http://10.90.116.188:5000',    // Your PC's Previous Wi-Fi IP
     'http://192.168.43.114:5000',   // Alternative Wi-Fi IP
     'http://192.168.28.61:5000',    // Alternative Wi-Fi IP
     'http://192.168.56.1:5000',     // Your PC's Ethernet IP
-    'http://10.0.2.2:5000',
-    'http://192.168.29.219:5000'// Android emulator
+    'http://10.0.2.2:5000',         // Android emulator
   ];
 
   // In development, the app will auto-detect the correct URL on first API call

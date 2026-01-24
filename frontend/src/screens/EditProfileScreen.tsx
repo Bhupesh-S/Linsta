@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { profileApi, UserProfileResponse } from '../services/profile.api';
 
 const EditProfileScreen = ({ route, navigation }: any) => {
-  const { profileData: initialData } = route.params;
+  const { profileData: initialData } = route?.params || {};
   
   const [loading, setLoading] = useState(false);
   const [headline, setHeadline] = useState(initialData?.profile?.headline || '');

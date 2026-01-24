@@ -4,6 +4,7 @@ import { Types } from "mongoose";
 export interface CreatePostRequest {
   caption: string;
   eventId?: string;
+  communityId?: string;
   media?: {
     url: string;
     type: "image" | "video";
@@ -14,6 +15,7 @@ export interface PostResponse {
   _id: string;
   authorId: string;
   eventId?: string;
+  communityId?: string;
   caption?: string;
   media?: PostMediaResponse[];
   author?: {

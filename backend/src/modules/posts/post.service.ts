@@ -3,6 +3,7 @@ import { Post, IPost } from "./post.model";
 import { PostMedia, IPostMedia } from "./post-media.model";
 import { Like, ILike } from "./like.model";
 import { Comment, IComment } from "./comment.model";
+import { UserProfile } from "../users/profile.model";
 import { Types } from "mongoose";
 import { CreatePostRequest, PostResponse, CommentResponse } from "./post.types";
 import notificationService from "../notifications/notification.service";
@@ -27,6 +28,7 @@ export class PostService {
       type: postType,
       caption: data.caption,
       eventId: data.eventId ? new Types.ObjectId(data.eventId) : undefined,
+      communityId: data.communityId ? new Types.ObjectId(data.communityId) : undefined,
     });
 
     // Add media if provided
@@ -98,6 +100,7 @@ export class PostService {
     const posts = await Post.find(query)
       .populate("authorId", "name email")
       .populate("eventId", "title")
+      .populate("communityId", "name")
       .sort({ createdAt: -1 })
       .limit(limit)
       .skip(skip);
@@ -140,6 +143,12 @@ export class PostService {
             ? {
                 _id: (post.eventId as any)._id.toString(),
                 title: (post.eventId as any).title,
+              }
+            : undefined,
+          community: post.communityId && (post.communityId as any)._id
+            ? {
+                _id: (post.communityId as any)._id.toString(),
+                name: (post.communityId as any).name,
               }
             : undefined,
           likeCount,
@@ -530,5 +539,84 @@ export class PostService {
     const { User } = require("../users/user.model");
     const user = await User.findById(userId).select("name");
     return user?.name || "Someone";
+  }
+
+  // Get posts for a specific community
+  static async getCommunityPosts(
+    communityId: string,
+    userId: string,
+    limit: number = 20,
+    skip: number = 0
+  ): Promise<PostResponse[]> {
+    try {
+      const posts = await Post.find({ communityId: new Types.ObjectId(communityId) })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .populate("authorId", "name email")
+        .populate("eventId", "name location startDate")
+        .populate("communityId", "name")
+        .lean();
+
+      // Get unique author IDs
+      const authorIds = [...new Set(posts.map((post: any) => post.authorId._id.toString()))];
+      
+      // Fetch all author profiles
+      const profiles = await UserProfile.find({ userId: { $in: authorIds } }).select('userId profileImageUrl');
+      const profileMap = new Map(profiles.map((p: any) => [p.userId.toString(), p.profileImageUrl]));
+
+      const postsWithDetails = await Promise.all(
+        posts.map(async (post: any) => {
+          const media = await PostMedia.find({ postId: post._id }).lean();
+          const likeCount = await Like.countDocuments({ postId: post._id });
+          const commentCount = await Comment.countDocuments({ postId: post._id });
+          const isLiked = await Like.exists({
+            postId: post._id,
+            userId: new Types.ObjectId(userId),
+          });
+
+          return {
+            _id: post._id.toString(),
+            authorId: post.authorId._id.toString(),
+            communityId: communityId,
+            author: {
+              _id: post.authorId._id.toString(),
+              name: post.authorId.name,
+              email: post.authorId.email,
+              profileImageUrl: profileMap.get(post.authorId._id.toString()) || null,
+            },
+            community: post.communityId
+              ? {
+                  _id: post.communityId._id.toString(),
+                  name: post.communityId.name,
+                }
+              : undefined,
+            caption: post.caption,
+            media: media.map((m: any) => ({
+              _id: m._id.toString(),
+              postId: m.postId.toString(),
+              mediaType: m.mediaType,
+              mediaUrl: m.mediaUrl,
+            })),
+            likeCount,
+            commentCount,
+            userLiked: !!isLiked,
+            createdAt: post.createdAt,
+            updatedAt: post.updatedAt,
+            event: post.eventId
+              ? {
+                  _id: post.eventId._id.toString(),
+                  title: post.eventId.name,
+                }
+              : undefined,
+          };
+        })
+      );
+
+      return postsWithDetails;
+    } catch (error) {
+      console.error("Get community posts error:", error);
+      throw error;
+    }
   }
 }

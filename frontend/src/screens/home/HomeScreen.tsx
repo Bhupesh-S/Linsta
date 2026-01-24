@@ -106,6 +106,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setShowStoryViewer(true);
   };
 
+  const handleYourStoryPress = () => {
+    // Set index to -1 to indicate user's own story
+    setSelectedStoryIndex(-1);
+    setShowStoryViewer(true);
+  };
+
   const handleCreatePress = () => {
     setShowCreateModal(true);
   };
@@ -211,8 +217,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </View>
       ) : (
         <StoryCarousel 
-          stories={stories.length > 0 ? stories : []} 
+          stories={stories.filter(s => !s.isOwn)} 
+          userStories={stories.find(s => s.isOwn)?.stories || []}
           onStoryPress={handleStoryPress}
+          onYourStoryPress={handleYourStoryPress}
           onAddStory={() => navigation?.navigate?.('CreatePost', { mode: 'story' })}
           currentUserName={user?.name}
           currentUserProfileImage={userProfileImage}
@@ -270,8 +278,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       {/* Story Viewer */}
       <StoryViewer
         visible={showStoryViewer}
-        stories={stories}
-        initialIndex={selectedStoryIndex}
+        stories={selectedStoryIndex === -1 
+          ? [{ 
+              user: { 
+                id: user?.id || '', 
+                name: user?.name || '', 
+                email: user?.email || '', 
+                avatar: 'person-circle',
+                profileImageUrl: userProfileImage 
+              }, 
+              stories: stories.find(s => s.isOwn)?.stories || [], 
+              isOwn: true 
+            }]
+          : stories.filter(s => !s.isOwn)
+        }
+        initialIndex={selectedStoryIndex === -1 ? 0 : selectedStoryIndex}
         onClose={() => setShowStoryViewer(false)}
       />
 

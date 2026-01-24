@@ -198,7 +198,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             <Image
               source={{ uri: currentStory.mediaUrl }}
               style={styles.storyImage}
-              resizeMode="cover"
+              resizeMode="contain"
             />
           ) : currentStory.caption ? (
             <View style={styles.contentContainer}>

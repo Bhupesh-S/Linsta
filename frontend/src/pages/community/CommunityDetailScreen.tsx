@@ -20,6 +20,9 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../context/ThemeContext';
 import { networkAPI } from '../../services/network.http';
 import { Community, CommunityMember } from '../../types/network.types';
+import { postsApi, Post } from '../../services/posts.api';
+import PostCard from '../../components/PostCard';
+import BottomNavigation from '../../components/BottomNavigation';
 
 interface Props {
   navigation: any;
@@ -47,6 +50,8 @@ const CommunityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [rulesExpanded, setRulesExpanded] = useState(false);
   const [isFirstJoin, setIsFirstJoin] = useState(false);
   const [showMemberOptions, setShowMemberOptions] = useState<string | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
   const [loadingStates, setLoadingStates] = useState({
     info: false,
     members: false,
@@ -64,6 +69,8 @@ const CommunityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     if (activeTab === 'members' && community) {
       loadMembers();
+    } else if (activeTab === 'posts' && community) {
+      loadPosts();
     }
   }, [activeTab, community]);
 
@@ -92,11 +99,28 @@ const CommunityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
+  const loadPosts = async () => {
+    if (!communityId) return;
+    
+    try {
+      setPostsLoading(true);
+      const fetchedPosts = await postsApi.getCommunityPosts(communityId);
+      setPosts(fetchedPosts);
+    } catch (error: any) {
+      console.error('Failed to load community posts:', error);
+      Alert.alert('Error', error.message || 'Failed to load posts');
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadCommunity();
     if (activeTab === 'members') {
       await loadMembers();
+    } else if (activeTab === 'posts') {
+      await loadPosts();
     }
     setRefreshing(false);
   };
@@ -809,7 +833,10 @@ const CommunityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             style={styles.createPostButton}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              Alert.alert('Coming Soon', 'Post creation feature will be available soon!');
+              navigation.navigate('CreatePost', { 
+                communityId: communityId,
+                onPostCreated: loadPosts 
+              });
             }}
           >
             <Ionicons name="add-circle" size={24} color="#0A66C2" />
@@ -817,16 +844,58 @@ const CommunityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </TouchableOpacity>
         )}
 
+        {/* Loading State */}
+        {postsLoading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0A66C2" />
+          </View>
+        )}
+
+        {/* Posts List */}
+        {!postsLoading && posts.length > 0 && (
+          <View style={{ marginTop: 12 }}>
+            {posts.map((post) => (
+              <PostCard
+                key={post._id}
+                post={post}
+                onLike={async () => {
+                  try {
+                    if (post.userLiked) {
+                      await postsApi.unlikePost(post._id);
+                    } else {
+                      await postsApi.likePost(post._id);
+                    }
+                    await loadPosts(); // Refresh posts
+                  } catch (error) {
+                    console.error('Error toggling like:', error);
+                  }
+                }}
+                onComment={() => {
+                  navigation.navigate('PostDetail', { postId: post._id });
+                }}
+                onShare={() => {
+                  Alert.alert('Share', 'Share functionality coming soon!');
+                }}
+                onPress={() => {
+                  navigation.navigate('PostDetail', { postId: post._id });
+                }}
+              />
+            ))}
+          </View>
+        )}
+
         {/* Empty State */}
-        <View style={styles.emptyState}>
-          <Ionicons name="document-text-outline" size={64} color="#d1d5db" />
-          <Text style={styles.emptyText}>No posts yet</Text>
-          <Text style={styles.emptySubtext}>
-            {canPost
-              ? 'Be the first to post in this community'
-              : 'Join the community to see and create posts'}
-          </Text>
-        </View>
+        {!postsLoading && posts.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="document-text-outline" size={64} color="#d1d5db" />
+            <Text style={styles.emptyText}>No posts yet</Text>
+            <Text style={styles.emptySubtext}>
+              {canPost
+                ? 'Be the first to post in this community'
+                : 'Join the community to see and create posts'}
+            </Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -981,6 +1050,16 @@ const CommunityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation 
+        navigation={navigation}
+        onCreatePress={() => {
+          if (community) {
+            navigation.navigate('CreatePost', { communityId: community._id });
+          }
+        }}
+      />
     </>
   );
 };
@@ -1482,6 +1561,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   // Modal Styles
   modalOverlay: {

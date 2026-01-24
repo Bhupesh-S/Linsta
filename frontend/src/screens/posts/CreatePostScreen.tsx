@@ -21,12 +21,16 @@ interface CreatePostScreenProps {
   route?: {
     params?: {
       mode?: 'post' | 'story';
+      communityId?: string;
+      onPostCreated?: () => void;
     };
   };
 }
 
 const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, route }) => {
   const mode = route?.params?.mode || 'post';
+  const communityId = route?.params?.communityId;
+  const onPostCreated = route?.params?.onPostCreated;
   const isStoryMode = mode === 'story';
   const [caption, setCaption] = useState('');
   const [mediaFiles, setMediaFiles] = useState<{ uri: string; type: 'image' | 'video'; name: string }[]>([]);
@@ -117,8 +121,19 @@ const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, route }
           caption || undefined
         );
         Alert.alert('Success', 'Story created successfully!');
+      } else if (communityId) {
+        // Create community post
+        const mediaUrls = mediaFiles.map(file => ({
+          url: file.uri,
+          type: file.type
+        }));
+        await postsApi.createCommunityPost(communityId, caption, mediaUrls.length > 0 ? mediaUrls : undefined);
+        Alert.alert('Success', 'Community post created successfully!');
+        if (onPostCreated) {
+          onPostCreated();
+        }
       } else {
-        // Create post
+        // Create regular post
         if (mediaFiles.length > 0) {
           await postsApi.createPostWithMedia(caption, mediaFiles);
         } else {

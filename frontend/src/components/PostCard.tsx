@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert, Image } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Post } from '../utils/types';
 import { postsApi, Post as BackendPost } from '../services/posts.api';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +24,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated, onPostDeleted 
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [commentCount, setCommentCount] = useState(isBackendPost ? (post as BackendPost).commentCount : (post as Post).comments);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const videoRef = useRef<Video>(null);
 
   // Debug: Log media data
   if (isBackendPost) {
@@ -38,10 +41,30 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated, onPostDeleted 
 
   // Get post data based on type
   const userName = isBackendPost ? (post as BackendPost).author?.name : (post as Post).user.name;
-  const userTitle = isBackendPost ? (post as BackendPost).author?.email : (post as Post).user.title;
+  const communityName = isBackendPost ? (post as BackendPost).community?.name : undefined;
   const profileImageUrl = isBackendPost ? (post as BackendPost).author?.profileImageUrl : undefined;
   const content = isBackendPost ? (post as BackendPost).caption : (post as Post).content;
-  const timestamp = isBackendPost ? new Date((post as BackendPost).createdAt).toLocaleDateString() : (post as Post).timestamp;
+  
+  // Debug: Log community data
+  if (isBackendPost) {
+    console.log('🏘️ Post community data:', {
+      postId: (post as BackendPost)._id,
+      communityId: (post as BackendPost).communityId,
+      community: (post as BackendPost).community,
+      communityName
+    });
+  }
+  
+  // Format date as DD/MM/YYYY
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+  
+  const timestamp = isBackendPost ? formatDate((post as BackendPost).createdAt) : (post as Post).timestamp;
   const postId = isBackendPost ? (post as BackendPost)._id : (post as Post).id;
   
   // Extract authorId - use author._id since author is populated
@@ -139,6 +162,29 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated, onPostDeleted 
     setCommentCount(prev => prev + 1);
   };
 
+  const handleVideoPress = async () => {
+    if (!videoRef.current) return;
+    
+    try {
+      if (isVideoPlaying) {
+        await videoRef.current.pauseAsync();
+        setIsVideoPlaying(false);
+      } else {
+        await videoRef.current.playAsync();
+        setIsVideoPlaying(true);
+      }
+    } catch (error) {
+      console.error('Video control error:', error);
+    }
+  };
+
+  const handleVideoStatusUpdate = (status: AVPlaybackStatus) => {
+    if (status.isLoaded) {
+      setIsVideoLoading(false);
+      setIsVideoPlaying(status.isPlaying);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -160,9 +206,11 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated, onPostDeleted 
                 {userName}
               </Text>
             </View>
-            <Text style={styles.userTitle} numberOfLines={1} ellipsizeMode="tail">
-              {userTitle}
-            </Text>
+            {communityName && (
+              <Text style={styles.communityName} numberOfLines={1} ellipsizeMode="tail">
+                From Community {communityName}
+              </Text>
+            )}
             <Text style={styles.timestamp} numberOfLines={1}>
               {timestamp}
             </Text>
@@ -201,39 +249,54 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated, onPostDeleted 
               );
             } else if (mediaItem.mediaType === 'video') {
               return (
-                <Video
-                  key={mediaItem._id}
-                  source={{ uri: mediaItem.mediaUrl }}
-                  style={styles.postVideo}
-                  useNativeControls
-                  resizeMode={ResizeMode.CONTAIN}
-                  shouldPlay={false}
-                  onError={(error) => {
-                    console.error('❌ Video load error:', mediaItem.mediaUrl, error);
-                  }}
-                  onLoad={() => {
-                    console.log('✅ Video loaded:', mediaItem.mediaUrl);
-                  }}
-                />
+                <View key={mediaItem._id} style={styles.videoWrapper}>
+                  <Video
+                    ref={videoRef}
+                    source={{ uri: mediaItem.mediaUrl }}
+                    style={styles.postVideo}
+                    resizeMode={ResizeMode.CONTAIN}
+                    shouldPlay={false}
+                    isLooping={false}
+                    onPlaybackStatusUpdate={handleVideoStatusUpdate}
+                    onLoadStart={() => setIsVideoLoading(true)}
+                    onLoad={() => {
+                      setIsVideoLoading(false);
+                      console.log('✅ Video loaded:', mediaItem.mediaUrl);
+                    }}
+                    onError={(error) => {
+                      setIsVideoLoading(false);
+                      console.error('❌ Video load error:', mediaItem.mediaUrl, error);
+                    }}
+                  />
+                  
+                  {/* Video Loading Indicator */}
+                  {isVideoLoading && (
+                    <View style={styles.videoLoadingOverlay}>
+                      <ActivityIndicator size="large" color="#FFFFFF" />
+                    </View>
+                  )}
+                  
+                  {/* Custom Play/Pause Button */}
+                  {!isVideoLoading && (
+                    <TouchableOpacity 
+                      style={styles.videoControlOverlay}
+                      activeOpacity={0.9}
+                      onPress={handleVideoPress}
+                    >
+                      {!isVideoPlaying && (
+                        <View style={styles.playButton}>
+                          <Ionicons name="play" size={48} color="#FFFFFF" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
               );
             }
             return null;
           })}
         </View>
       )}
-
-      {/* Engagement Stats */}
-      <View style={styles.engagementStats}>
-        <View style={styles.leftStats}>
-          <View style={styles.likeIcon}>
-            <Ionicons name="heart" size={14} color="#FFFFFF" />
-          </View>
-          <Text style={styles.statsText} numberOfLines={1}> {likeCount}</Text>
-        </View>
-        <View style={styles.rightStats}>
-          <Text style={styles.statsText} numberOfLines={1}>{commentCount} comments</Text>
-        </View>
-      </View>
 
       {/* Action Buttons */}
       <View style={styles.actions}>
@@ -249,12 +312,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated, onPostDeleted 
             color={isLiked ? "#FF3250" : "#666666"} 
           />
           <Text style={[styles.actionText, isLiked && styles.actionTextLiked]} numberOfLines={1}>
-            {isLiked ? 'Liked' : 'Like'}
+            {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton} activeOpacity={0.6} onPress={handleComment}>
           <Ionicons name="chatbubble-outline" size={24} color="#666666" />
-          <Text style={styles.actionText} numberOfLines={1}>Comment</Text>
+          <Text style={styles.actionText} numberOfLines={1}>{commentCount} {commentCount === 1 ? 'Comment' : 'Comments'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton} activeOpacity={0.6} onPress={handleShare}>
           <Ionicons name="paper-plane-outline" size={24} color="#666666" />
@@ -289,18 +352,19 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated, onPostDeleted 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
-    marginBottom: 8,
-    borderRadius: 8,
-    marginHorizontal: 8,
+    marginBottom: 12,
+    borderRadius: 12,
+    marginHorizontal: 4,
+    paddingBottom: 20,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 2,
+        elevation: 3,
       },
     }),
   },
@@ -309,8 +373,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingTop: 8,
+    paddingBottom: 5,
   },
   userInfo: {
     flexDirection: 'row',
@@ -318,9 +382,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#F8F9FA',
     justifyContent: 'center',
     alignItems: 'center',
@@ -330,9 +394,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   profileImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
   },
   userDetails: {
     flex: 1,
@@ -353,6 +417,12 @@ const styles = StyleSheet.create({
     color: '#666666',
     marginTop: 2,
   },
+  communityName: {
+    fontSize: 13,
+    color: '#0A66C2',
+    marginTop: 2,
+    fontWeight: '500',
+  },
   timestamp: {
     fontSize: 12,
     color: '#8E8E8E',
@@ -362,15 +432,21 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   content: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
     color: '#1D2226',
     paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   mediaContainer: {
     width: '100%',
     marginBottom: 8,
+  },
+  videoWrapper: {
+    width: '100%',
+    height: 300,
+    backgroundColor: '#000000',
+    position: 'relative',
   },
   postImage: {
     width: '100%',
@@ -389,6 +465,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  videoControlOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  playButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+  },
+  videoLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   engagementStats: {
     flexDirection: 'row',

@@ -43,10 +43,13 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({
         {/* Your Story / Add Story */}
         <TouchableOpacity
           style={styles.storyItem}
-          onPress={onAddStory}
+          onPress={hasUserStories ? onYourStoryPress : onAddStory}
           activeOpacity={0.7}
         >
-          <View style={[styles.storyRing, styles.addStoryRing]}>
+          <View style={[
+            styles.storyRing,
+            hasUserStories ? styles.activeStoryRing : styles.addStoryRing
+          ]}>
             <View style={styles.storyAvatar}>
               {currentUserProfileImage ? (
                 <Image
@@ -78,7 +81,7 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({
           >
             <View style={[
               styles.storyRing,
-              userStory.stories.some(s => !s.hasViewed) && styles.unviewedRing
+              userStory.stories.length > 0 && styles.activeStoryRing
             ]}>
               <View style={styles.storyAvatar}>
                 {userStory.user.profileImageUrl ? (
@@ -145,7 +148,7 @@ const styles = StyleSheet.create({
   },
   activeStoryRing: {
     borderWidth: 3,
-    borderColor: '#FF6B35', // Red-orange color similar to Instagram
+    borderColor: '#0A66C2', // Blue color for active story ring
   },
   addStoryRing: {
     borderColor: '#DBDBDB',

@@ -55,6 +55,7 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   const { openConversationWithUser } = useMessages();
 
   const [activeTab, setActiveTab] = useState<TabType>('suggestions');
+  const [communityTab, setCommunityTab] = useState<'explore' | 'my'>('explore');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>({});
@@ -290,6 +291,19 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
         );
 
       case 'communities':
+        const filteredCommunities = communities.filter(community => {
+          // Filter by tab (Explore or My Communities)
+          const matchesTab = communityTab === 'explore' ? !community.isJoined : community.isJoined;
+          
+          // Filter by search query
+          const matchesSearch = searchQuery.trim() === '' || 
+            community.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            community.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            community.category.toLowerCase().includes(searchQuery.toLowerCase());
+          
+          return matchesTab && matchesSearch;
+        });
+
         return (
           <View>
             {loading && communities.length === 0 ? (
@@ -297,10 +311,10 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
                 <ActivityIndicator size="large" color="#0A66C2" />
                 <Text style={styles.loadingText}>Loading communities...</Text>
               </View>
-            ) : communities.length > 0 ? (
+            ) : (
               <View>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>{communities.length} Communities</Text>
+                  <Text style={styles.sectionTitle}>{filteredCommunities.length} Communities</Text>
                   <TouchableOpacity
                     onPress={() => navigation?.navigate('CreateCommunity')}
                     style={styles.createButton}
@@ -309,7 +323,8 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
                     <Text style={styles.createButtonText}>Create</Text>
                   </TouchableOpacity>
                 </View>
-                {communities.map(community => (
+                {filteredCommunities.length > 0 ? (
+                  filteredCommunities.map(community => (
                   <TouchableOpacity
                     key={community.id}
                     style={styles.communityItem}
@@ -342,8 +357,8 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
                               ]}
                             >
                               <Ionicons
-                                name={community.visibility === 'private' ? 'lock-closed' : 'globe'}
-                                size={10}
+                                name={community.visibility === 'private' ? 'lock-closed-outline' : 'globe-outline'}
+                                size={20}
                                 color={community.visibility === 'private' ? '#92400e' : '#1e40af'}
                               />
                             </View>
@@ -405,20 +420,35 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
                       </Text>
                     </TouchableOpacity>
                   </TouchableOpacity>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="people-outline" size={64} color="#d1d5db" />
-                <Text style={styles.emptyText}>No communities available</Text>
-                <Text style={styles.emptySubtext}>Join communities to connect with like-minded professionals</Text>
-                <TouchableOpacity
-                  style={styles.emptyActionButton}
-                  onPress={() => navigation?.navigate('CreateCommunity')}
-                >
-                  <Ionicons name="add-circle-outline" size={20} color="#0A66C2" />
-                  <Text style={styles.emptyActionButtonText}>Create Community</Text>
-                </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="people-outline" size={64} color="#d1d5db" />
+                    <Text style={styles.emptyText}>
+                      {communityTab === 'my' 
+                        ? "You haven't joined any communities yet" 
+                        : searchQuery.trim() 
+                          ? 'No communities found' 
+                          : 'No communities available'}
+                    </Text>
+                    <Text style={styles.emptySubtext}>
+                      {communityTab === 'my' 
+                        ? 'Switch to Explore to find communities!' 
+                        : searchQuery.trim() 
+                          ? 'Try a different search term' 
+                          : 'Be the first to create one!'}
+                    </Text>
+                    {communityTab === 'explore' && !searchQuery.trim() && (
+                      <TouchableOpacity
+                        style={styles.emptyActionButton}
+                        onPress={() => navigation?.navigate('CreateCommunity')}
+                      >
+                        <Ionicons name="add-circle-outline" size={20} color="#0A66C2" />
+                        <Text style={styles.emptyActionButtonText}>Create Community</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -537,6 +567,48 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
           )}
         </View>
       </View>
+
+      {/* Community Sub-Tabs */}
+      {activeTab === 'communities' && (
+        <View style={styles.communityTabsContainer}>
+          <TouchableOpacity
+            onPress={() => {
+              setCommunityTab('explore');
+              setSearchQuery('');
+            }}
+            style={[
+              styles.communityTab,
+              communityTab === 'explore' && styles.activeCommunityTab
+            ]}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.communityTabText,
+              communityTab === 'explore' && styles.activeCommunityTabText
+            ]}>
+              Explore
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              setCommunityTab('my');
+              setSearchQuery('');
+            }}
+            style={[
+              styles.communityTab,
+              communityTab === 'my' && styles.activeCommunityTab
+            ]}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.communityTabText,
+              communityTab === 'my' && styles.activeCommunityTabText
+            ]}>
+              My Communities
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Content */}
       <ScrollView
@@ -671,6 +743,7 @@ const styles = StyleSheet.create({
   banner: {
     marginHorizontal: 16,
     marginTop: 8,
+    marginBottom: 12,
     borderRadius: 12,
     overflow: 'hidden',
     ...Platform.select({
@@ -1080,5 +1153,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#0A66C2',
+  },
+  communityTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  communityTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeCommunityTab: {
+    borderBottomColor: '#0A66C2',
+  },
+  communityTabText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  activeCommunityTabText: {
+    color: '#0A66C2',
+    fontWeight: '600',
   },
 });

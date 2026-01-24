@@ -58,6 +58,10 @@ router.post("/", authMiddleware, PostController.createPost);
 router.get("/", authMiddleware, PostController.getFeed);
 router.delete("/:id", authMiddleware, PostController.deletePost);
 
+// Community post routes
+router.post("/community/:communityId", authMiddleware, PostController.createCommunityPost);
+router.get("/community/:communityId", authMiddleware, PostController.getCommunityPosts);
+
 router.post("/:id/like", authMiddleware, PostController.likePost);
 router.delete("/:id/like", authMiddleware, PostController.unlikePost);
 

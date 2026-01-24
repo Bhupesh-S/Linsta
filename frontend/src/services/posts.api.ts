@@ -10,6 +10,7 @@ export interface PostMedia {
 export interface CreatePostData {
   caption: string;
   eventId?: string;
+  communityId?: string;
   media?: PostMedia[];
 }
 
@@ -17,6 +18,7 @@ export interface Post {
   _id: string;
   authorId: string;
   eventId?: string;
+  communityId?: string;
   caption: string;
   media?: {
     _id: string;
@@ -33,6 +35,10 @@ export interface Post {
   event?: {
     _id: string;
     title: string;
+  };
+  community?: {
+    _id: string;
+    name: string;
   };
   likeCount: number;
   commentCount: number;
@@ -415,6 +421,55 @@ export const postsApi = {
       return result;
     } catch (error) {
       console.error('❌ Fetch user comments error:', error);
+      throw error;
+    }
+  },
+
+  // Create community post
+  createCommunityPost: async (communityId: string, caption: string, media?: PostMedia[]): Promise<Post> => {
+    try {
+      const apiUrl = await getApiUrl();
+      const headers = await getAuthHeaders();
+
+      const response = await fetch(`${apiUrl}/api/posts/community/${communityId}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ caption, media }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create community post');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('❌ Create community post error:', error);
+      throw error;
+    }
+  },
+
+  // Get community posts
+  getCommunityPosts: async (communityId: string, limit: number = 20, skip: number = 0): Promise<Post[]> => {
+    try {
+      const apiUrl = await getApiUrl();
+      const headers = await getAuthHeaders();
+
+      const response = await fetch(`${apiUrl}/api/posts/community/${communityId}?limit=${limit}&skip=${skip}`, {
+        method: 'GET',
+        headers,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch community posts');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('❌ Fetch community posts error:', error);
       throw error;
     }
   },

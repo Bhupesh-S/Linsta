@@ -78,6 +78,30 @@ export interface NetworkAPI {
   getCommunities(): Promise<CommunitiesResponse>;
 
   /**
+   * POST /network/community
+   * Create a new community
+   */
+  createCommunity(data: any): Promise<CommunityActionResponse>;
+
+  /**
+   * GET /network/community/:id
+   * Get community details
+   */
+  getCommunityDetail(communityId: string): Promise<{ community: any }>;
+
+  /**
+   * PUT /network/community/:id
+   * Update community (admin only)
+   */
+  updateCommunity(communityId: string, data: any): Promise<CommunityActionResponse>;
+
+  /**
+   * DELETE /network/community/:id
+   * Delete community (creator only)
+   */
+  deleteCommunity(communityId: string): Promise<CommunityActionResponse>;
+
+  /**
    * POST /network/community/join
    * Join a community
    */
@@ -88,6 +112,36 @@ export interface NetworkAPI {
    * Leave a community
    */
   leaveCommunity(communityId: string): Promise<CommunityActionResponse>;
+
+  /**
+   * GET /network/community/:id/members
+   * Get community members
+   */
+  getCommunityMembers(communityId: string, status?: string): Promise<{ members: any[] }>;
+
+  /**
+   * PUT /network/community/:id/member/:memberId/role
+   * Update member role (admin only)
+   */
+  updateMemberRole(communityId: string, memberId: string, role: string): Promise<CommunityActionResponse>;
+
+  /**
+   * DELETE /network/community/:id/member/:memberId
+   * Remove member from community (admin/moderator)
+   */
+  removeMember(communityId: string, memberId: string): Promise<CommunityActionResponse>;
+
+  /**
+   * POST /network/community/:id/approve/:memberId
+   * Approve join request (admin/moderator)
+   */
+  approveJoinRequest(communityId: string, memberId: string): Promise<CommunityActionResponse>;
+
+  /**
+   * POST /network/community/:id/reject/:memberId
+   * Reject join request (admin/moderator)
+   */
+  rejectJoinRequest(communityId: string, memberId: string): Promise<CommunityActionResponse>;
 
   /**
    * GET /network/permissions/{userId}

@@ -211,6 +211,209 @@ export class NetworkController {
     }
   }
 
+  static async createCommunity(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        res.status(401).json({ error: "User not authenticated" });
+        return;
+      }
+
+      const data = req.body;
+      if (!data.name) {
+        res.status(400).json({ error: "Community name is required" });
+        return;
+      }
+
+      const community = await NetworkService.createCommunity(userId, data);
+      res.status(201).json({ community });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async getCommunityDetail(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        res.status(401).json({ error: "User not authenticated" });
+        return;
+      }
+
+      const { id } = req.params;
+      if (!id) {
+        res.status(400).json({ error: "Community ID is required" });
+        return;
+      }
+
+      const community = await NetworkService.getCommunityDetail(userId, id);
+      res.status(200).json({ community });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async updateCommunity(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        res.status(401).json({ error: "User not authenticated" });
+        return;
+      }
+
+      const { id } = req.params;
+      const data = req.body;
+
+      if (!id) {
+        res.status(400).json({ error: "Community ID is required" });
+        return;
+      }
+
+      const community = await NetworkService.updateCommunity(userId, id, data);
+      res.status(200).json({ community });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async deleteCommunity(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        res.status(401).json({ error: "User not authenticated" });
+        return;
+      }
+
+      const { id } = req.params;
+      if (!id) {
+        res.status(400).json({ error: "Community ID is required" });
+        return;
+      }
+
+      const result = await NetworkService.deleteCommunity(userId, id);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async getCommunityMembers(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        res.status(401).json({ error: "User not authenticated" });
+        return;
+      }
+
+      const { id } = req.params;
+      const status = req.query.status as 'active' | 'pending' | 'banned' | undefined;
+
+      if (!id) {
+        res.status(400).json({ error: "Community ID is required" });
+        return;
+      }
+
+      const members = await NetworkService.getCommunityMembers(userId, id, status);
+      res.status(200).json({ members });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async updateMemberRole(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        res.status(401).json({ error: "User not authenticated" });
+        return;
+      }
+
+      const { id, memberId } = req.params;
+      const { role } = req.body as { role?: 'member' | 'moderator' | 'admin' };
+
+      if (!id || !memberId) {
+        res.status(400).json({ error: "Community ID and Member ID are required" });
+        return;
+      }
+
+      if (!role) {
+        res.status(400).json({ error: "Role is required" });
+        return;
+      }
+
+      const result = await NetworkService.updateMemberRole(userId, id, memberId, role);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async removeMember(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        res.status(401).json({ error: "User not authenticated" });
+        return;
+      }
+
+      const { id, memberId } = req.params;
+
+      if (!id || !memberId) {
+        res.status(400).json({ error: "Community ID and Member ID are required" });
+        return;
+      }
+
+      const result = await NetworkService.removeMember(userId, id, memberId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async approveJoinRequest(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        res.status(401).json({ error: "User not authenticated" });
+        return;
+      }
+
+      const { id, memberId } = req.params;
+
+      if (!id || !memberId) {
+        res.status(400).json({ error: "Community ID and Member ID are required" });
+        return;
+      }
+
+      const result = await NetworkService.approveJoinRequest(userId, id, memberId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async rejectJoinRequest(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        res.status(401).json({ error: "User not authenticated" });
+        return;
+      }
+
+      const { id, memberId } = req.params;
+
+      if (!id || !memberId) {
+        res.status(400).json({ error: "Community ID and Member ID are required" });
+        return;
+      }
+
+      const result = await NetworkService.rejectJoinRequest(userId, id, memberId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
   static async checkMessagingPermission(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.userId;

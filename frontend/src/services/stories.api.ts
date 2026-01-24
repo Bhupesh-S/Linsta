@@ -7,6 +7,7 @@ export interface StoryUser {
   name: string;
   email: string;
   avatar: string;
+  profileImageUrl?: string;
 }
 
 export interface StoryItem {

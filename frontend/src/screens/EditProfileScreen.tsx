@@ -12,10 +12,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { profileApi, UserProfileResponse } from '../services/profile.api';
+import { useAuth } from '../context/AuthContext';
 
 const EditProfileScreen = ({ route, navigation }: any) => {
   const { profileData: initialData } = route.params;
+  const { logout } = useAuth();
   
   const [loading, setLoading] = useState(false);
   const [headline, setHeadline] = useState(initialData?.profile?.headline || '');
@@ -63,7 +66,21 @@ const EditProfileScreen = ({ route, navigation }: any) => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="close" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Edit Profile</Text>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => {
+              Alert.alert(
+                'Settings',
+                'Additional profile settings',
+                [{ text: 'OK' }]
+              );
+            }}
+          >
+            <Ionicons name="settings-outline" size={18} color="#666" />
+          </TouchableOpacity>
+        </View>
         <TouchableOpacity onPress={handleSave} disabled={loading}>
           {loading ? (
             <ActivityIndicator size="small" color="#0A66C2" />
@@ -212,6 +229,43 @@ const EditProfileScreen = ({ route, navigation }: any) => {
           </View>
         </View>
 
+        {/* Logout Section */}
+        <View style={styles.logoutSection}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={() => {
+              Alert.alert(
+                'Logout',
+                'Are you sure you want to logout?',
+                [
+                  {
+                    text: 'Cancel',
+                    onPress: () => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    },
+                    style: 'cancel',
+                  },
+                  {
+                    text: 'Logout',
+                    onPress: async () => {
+                      try {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                        await logout();
+                      } catch (error) {
+                        Alert.alert('Error', 'Failed to logout. Please try again.');
+                      }
+                    },
+                    style: 'destructive',
+                  },
+                ],
+              );
+            }}
+          >
+            <Ionicons name="log-out-outline" size={22} color="#EF4444" />
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.bottomSpace} />
       </ScrollView>
     </SafeAreaView>
@@ -232,6 +286,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+  },
+  headerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   headerTitle: {
     fontSize: 18,
@@ -306,6 +365,32 @@ const styles = StyleSheet.create({
   },
   bottomSpace: {
     height: 32,
+  },
+  settingsButton: {
+    marginRight: 12,
+  },
+  logoutSection: {
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    marginTop: 16,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EF4444',
   },
 });
 

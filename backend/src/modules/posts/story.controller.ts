@@ -2,6 +2,7 @@
 import { Request, Response } from "express";
 import { Story } from "./story.model";
 import { User } from "../users/user.model";
+import { UserProfile } from "../users/profile.model";
 import { Types } from "mongoose";
 import notificationService from "../notifications/notification.service";
 
@@ -61,8 +62,18 @@ export class StoryController {
       const stories = await Story.find({
         expiresAt: { $gt: now },
       })
-        .populate("userId", "name email")
+        .populate({
+          path: "userId",
+          select: "name email"
+        })
         .sort({ createdAt: -1 });
+
+      // Get unique user IDs from stories
+      const userIds = [...new Set(stories.map((story: any) => story.userId._id.toString()))];
+      
+      // Fetch profiles for all users
+      const profiles = await UserProfile.find({ userId: { $in: userIds } }).select('userId profileImageUrl');
+      const profileMap = new Map(profiles.map((p: any) => [p.userId.toString(), p.profileImageUrl]));
 
       // Group stories by user
       const groupedStories: any = {};
@@ -78,6 +89,7 @@ export class StoryController {
               name: user.name,
               email: user.email,
               avatar: 'person-circle', // Default avatar
+              profileImageUrl: profileMap.get(userIdStr) || null,
             },
             stories: [],
             isOwn: userIdStr === userId,

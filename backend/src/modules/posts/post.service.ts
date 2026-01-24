@@ -102,6 +102,12 @@ export class PostService {
       .limit(limit)
       .skip(skip);
 
+    // Get profile data for all authors
+    const { UserProfile } = await import('../users/profile.model');
+    const authorIds = posts.map(p => p.authorId).filter(Boolean);
+    const profiles = await UserProfile.find({ userId: { $in: authorIds } });
+    const profileMap = new Map(profiles.map((p: any) => [p.userId.toString(), p]));
+
     // Fetch likes and comments for each post
     const postsWithCounts: PostResponse[] = await Promise.all(
       posts.map(async (post) => {
@@ -127,6 +133,7 @@ export class PostService {
                 _id: (post.authorId as any)._id.toString(),
                 name: (post.authorId as any).name,
                 email: (post.authorId as any).email,
+                profileImageUrl: (profileMap.get((post.authorId as any)._id.toString()) as any)?.profileImageUrl,
               }
             : undefined,
           event: post.eventId && (post.eventId as any)._id
@@ -152,6 +159,16 @@ export class PostService {
     const post = await Post.findById(postId)
       .populate("authorId", "name email")
       .populate("eventId", "title");
+
+    // Get profile data for author
+    const { UserProfile } = await import('../users/profile.model');
+    let authorProfile = null;
+    if (post?.authorId) {
+      const authorIdStr = typeof post.authorId === 'string' ? post.authorId : (post.authorId as any)._id?.toString();
+      if (authorIdStr) {
+        authorProfile = await UserProfile.findOne({ userId: authorIdStr });
+      }
+    }
 
     if (!post) {
       throw new Error("Post not found");
@@ -184,6 +201,7 @@ export class PostService {
             _id: (post.authorId as any)._id?.toString() || '',
             name: (post.authorId as any).name || 'Unknown',
             email: (post.authorId as any).email || '',
+            profileImageUrl: authorProfile?.profileImageUrl,
           }
         : undefined,
       event: post.eventId && (post.eventId as any)._id

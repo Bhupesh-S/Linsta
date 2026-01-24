@@ -28,6 +28,7 @@ export interface Post {
     _id: string;
     name: string;
     email: string;
+    profileImageUrl?: string;
   };
   event?: {
     _id: string;

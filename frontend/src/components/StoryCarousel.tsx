@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserStories } from '../services/stories.api';
@@ -16,6 +17,8 @@ interface StoryCarouselProps {
   onStoryPress?: (index: number) => void;
   onAddStory?: () => void;
   onYourStoryPress?: () => void;
+  currentUserName?: string;
+  currentUserProfileImage?: string | null;
 }
 
 const StoryCarousel: React.FC<StoryCarouselProps> = ({
@@ -23,7 +26,9 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({
   userStories = [],
   onStoryPress,
   onAddStory,
-  onYourStoryPress
+  onYourStoryPress,
+  currentUserName,
+  currentUserProfileImage
 }) => {
   const hasUserStories = userStories.length > 0;
   const latestUserStory = hasUserStories ? userStories[userStories.length - 1] : null;
@@ -43,7 +48,14 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({
         >
           <View style={[styles.storyRing, styles.addStoryRing]}>
             <View style={styles.storyAvatar}>
-              <Ionicons name="add" size={28} color="#0A66C2" />
+              {currentUserProfileImage ? (
+                <Image
+                  source={{ uri: currentUserProfileImage }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Ionicons name="person-circle" size={66} color="#CCCCCC" />
+              )}
             </View>
             {!hasUserStories && (
               <View style={styles.addIconBadge}>
@@ -52,7 +64,7 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({
             )}
           </View>
           <Text style={styles.storyName} numberOfLines={1} ellipsizeMode="tail">
-            Your Story
+            {currentUserName ? currentUserName.split(' ')[0] : 'Your Story'}
           </Text>
         </TouchableOpacity>
 
@@ -69,7 +81,14 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({
               userStory.stories.some(s => !s.hasViewed) && styles.unviewedRing
             ]}>
               <View style={styles.storyAvatar}>
-                <Ionicons name="person-circle" size={28} color="#1D2226" />
+                {userStory.user.profileImageUrl ? (
+                  <Image
+                    source={{ uri: userStory.user.profileImageUrl }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <Ionicons name="person-circle" size={66} color="#CCCCCC" />
+                )}
               </View>
             </View>
             <Text style={styles.storyName} numberOfLines={1} ellipsizeMode="tail">

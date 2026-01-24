@@ -24,18 +24,22 @@ import CreateContentModal from '../../components/CreateContentModal';
 import { mockStories, mockPosts } from '../../utils/mockData';
 import { postsApi, Post } from '../../services/posts.api';
 import { storiesApi, UserStories } from '../../services/stories.api';
+import { profileApi } from '../../services/profile.api';
+import { useAuth } from '../../context/AuthContext';
 
 interface HomeScreenProps {
   navigation?: any;
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
+  const { user } = useAuth();
   const [activeReelId, setActiveReelId] = useState<string | null>(null);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [stories, setStories] = useState<UserStories[]>([]);
+  const [userProfileImage, setUserProfileImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingStories, setLoadingStories] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -45,9 +49,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     const initializeFeed = async () => {
       await fetchPosts();
       await fetchStories();
+      await fetchUserProfile();
     };
     initializeFeed();
   }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      if (user?.id) {
+        const profileData = await profileApi.getProfile(user.id);
+        setUserProfileImage(profileData.profile?.profileImageUrl || null);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch user profile:', error);
+    }
+  };
 
   const fetchPosts = async () => {
     try {
@@ -81,7 +97,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchPosts(), fetchStories()]);
+    await Promise.all([fetchPosts(), fetchStories(), fetchUserProfile()]);
     setRefreshing(false);
   };
 
@@ -197,7 +213,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <StoryCarousel 
           stories={stories.length > 0 ? stories : []} 
           onStoryPress={handleStoryPress}
-          onAddStory={() => navigation?.navigate?.('CreatePost', { mode: 'story' })} 
+          onAddStory={() => navigation?.navigate?.('CreatePost', { mode: 'story' })}
+          currentUserName={user?.name}
+          currentUserProfileImage={userProfileImage}
         />
       )}
 

@@ -34,7 +34,9 @@ import { UserProfileDetailScreen } from '../screens/network/UserProfileDetailScr
 
 import ConnectionsScreen from '../pages/network/ConnectionsScreen';
 import CommunitiesScreen from '../pages/network/CommunitiesScreen';
-import CommunityDetailScreen from '../pages/network/CommunityDetailScreen';
+import CommunityDetailScreen from '../pages/community/CommunityDetailScreen';
+import CreateCommunityScreen from '../pages/community/CreateCommunityScreen';
+import CommunitySettingsScreen from '../pages/community/CommunitySettingsScreen';
 import MessagesScreen from '../screens/messages/MessagesScreen';
 import ChatScreen from '../screens/common/ChatScreen';
 import NotificationsScreen from '../pages/notifications/NotificationsScreen';
@@ -88,6 +90,8 @@ type Screen =
   | 'Connections'
   | 'Communities'
   | 'CommunityDetail'
+  | 'CreateCommunity'
+  | 'CommunitySettings'
   | 'Messages'
   | 'Chat'
   | 'Notifications'
@@ -334,6 +338,10 @@ const AppNavigatorInner = () => {
         return <CommunitiesScreen navigation={navigation} />;
       case 'CommunityDetail':
         return <CommunityDetailScreen navigation={navigation} route={{ params: navState.currentParams }} />;
+      case 'CreateCommunity':
+        return <CreateCommunityScreen navigation={navigation} />;
+      case 'CommunitySettings':
+        return <CommunitySettingsScreen navigation={navigation} route={{ params: navState.currentParams }} />;
       case 'Messages':
         return <MessagesScreen navigation={navigation} />;
       case 'Chat':

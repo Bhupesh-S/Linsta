@@ -31,8 +31,50 @@ export interface Community {
   name: string;
   category?: string;
   description?: string;
+  visibility: 'public' | 'private';
+  tags: string[];
+  rules?: string;
+  imageUrl?: string;
+  coverImageUrl?: string;
   memberCount: number;
   isJoined: boolean;
+  userRole?: 'member' | 'moderator' | 'admin';
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunityMember {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userAvatarUrl?: string;
+  role: 'member' | 'moderator' | 'admin';
+  status: 'active' | 'pending' | 'banned';
+  joinedAt: string;
+}
+
+export interface CreateCommunityData {
+  name: string;
+  description?: string;
+  category?: string;
+  visibility?: 'public' | 'private';
+  tags?: string[];
+  rules?: string;
+  imageUrl?: string;
+  coverImageUrl?: string;
+}
+
+export interface UpdateCommunityData {
+  name?: string;
+  description?: string;
+  category?: string;
+  visibility?: 'public' | 'private';
+  tags?: string[];
+  rules?: string;
+  imageUrl?: string;
+  coverImageUrl?: string;
 }
 
 export interface ConnectionRequest {
@@ -78,6 +120,8 @@ export interface CommunitiesResponse {
 export interface CommunityActionResponse {
   success: boolean;
   message: string;
+  requiresApproval?: boolean;
+  community?: Community;
 }
 
 export interface PermissionsResponse {

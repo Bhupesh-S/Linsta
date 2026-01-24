@@ -1,12 +1,17 @@
 // CommunityMember schema
 import { Schema, model, Document, Types } from "mongoose";
 
-export type CommunityMemberRole = "member" | "admin";
+export type CommunityMemberRole = "member" | "moderator" | "admin";
+export type CommunityMemberStatus = "active" | "pending" | "banned";
 
 export interface ICommunityMember extends Document {
   communityId: Types.ObjectId;
   userId: Types.ObjectId;
   role: CommunityMemberRole;
+  status: CommunityMemberStatus;
+  requestedAt?: Date;
+  approvedAt?: Date;
+  approvedBy?: Types.ObjectId;
   joinedAt: Date;
 }
 
@@ -23,8 +28,23 @@ const communityMemberSchema = new Schema<ICommunityMember>({
   },
   role: {
     type: String,
-    enum: ["member", "admin"],
+    enum: ["member", "moderator", "admin"],
     default: "member",
+  },
+  status: {
+    type: String,
+    enum: ["active", "pending", "banned"],
+    default: "active",
+  },
+  requestedAt: {
+    type: Date,
+  },
+  approvedAt: {
+    type: Date,
+  },
+  approvedBy: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
   },
   joinedAt: {
     type: Date,

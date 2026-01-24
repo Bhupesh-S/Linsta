@@ -39,6 +39,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated, onPostDeleted 
   // Get post data based on type
   const userName = isBackendPost ? (post as BackendPost).author?.name : (post as Post).user.name;
   const userTitle = isBackendPost ? (post as BackendPost).author?.email : (post as Post).user.title;
+  const profileImageUrl = isBackendPost ? (post as BackendPost).author?.profileImageUrl : undefined;
   const content = isBackendPost ? (post as BackendPost).caption : (post as Post).content;
   const timestamp = isBackendPost ? new Date((post as BackendPost).createdAt).toLocaleDateString() : (post as Post).timestamp;
   const postId = isBackendPost ? (post as BackendPost)._id : (post as Post).id;
@@ -144,7 +145,14 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLikeUpdated, onPostDeleted 
       <View style={styles.header}>
         <View style={styles.userInfo}>
           <View style={styles.avatarContainer}>
-            <Ionicons name="person-circle" size={40} color="#0A66C2" />
+            {profileImageUrl ? (
+              <Image 
+                source={{ uri: profileImageUrl }} 
+                style={styles.profileImage}
+              />
+            ) : (
+              <Ionicons name="person-circle" size={40} color="#0A66C2" />
+            )}
           </View>
           <View style={styles.userDetails}>
             <View style={styles.nameRow}>
@@ -319,6 +327,12 @@ const styles = StyleSheet.create({
     marginRight: 12,
     borderWidth: 1,
     borderColor: '#EFEFEF',
+    overflow: 'hidden',
+  },
+  profileImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   userDetails: {
     flex: 1,

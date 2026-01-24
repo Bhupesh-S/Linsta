@@ -338,11 +338,8 @@ export const useNetwork = () => {
       setError(null);
       const response = await networkAPI.joinCommunity(communityId);
       
-      if (response.success) {
-        setCommunities(prev =>
-          prev.map(c => (c.id === communityId ? { ...c, isJoined: true, memberCount: c.memberCount + 1 } : c))
-        );
-      }
+      // Reload communities from backend to get accurate isJoined status
+      await loadCommunities();
       
       return response;
     } catch (err) {
@@ -361,11 +358,8 @@ export const useNetwork = () => {
       setError(null);
       const response = await networkAPI.leaveCommunity(communityId);
       
-      if (response.success) {
-        setCommunities(prev =>
-          prev.map(c => (c.id === communityId ? { ...c, isJoined: false, memberCount: c.memberCount - 1 } : c))
-        );
-      }
+      // Reload communities from backend to get accurate isJoined status
+      await loadCommunities();
       
       return response;
     } catch (err) {

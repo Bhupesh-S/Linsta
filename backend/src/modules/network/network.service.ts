@@ -41,8 +41,28 @@ export interface CommunityDTO {
   name: string;
   category?: string;
   description?: string;
+  visibility: 'public' | 'private';
+  tags: string[];
+  rules?: string;
+  imageUrl?: string;
+  coverImageUrl?: string;
   memberCount: number;
   isJoined: boolean;
+  userRole?: 'member' | 'moderator' | 'admin';
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunityMemberDTO {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userAvatarUrl?: string;
+  role: 'member' | 'moderator' | 'admin';
+  status: 'active' | 'pending' | 'banned';
+  joinedAt: string;
 }
 
 export interface ConnectionRequestDTO {
@@ -345,8 +365,9 @@ export class NetworkService {
     for (const c of communities) {
       const memberCount = await CommunityMember.countDocuments({
         communityId: c._id,
+        status: 'active',
       });
-      const isMember = await CommunityMember.findOne({
+      const membership = await CommunityMember.findOne({
         communityId: c._id,
         userId: currentId,
       });
@@ -356,28 +377,439 @@ export class NetworkService {
         name: c.name,
         category: c.category,
         description: c.description,
+        visibility: (c as any).visibility || 'public',
+        tags: (c as any).tags || [],
+        rules: (c as any).rules,
+        imageUrl: (c as any).imageUrl,
+        coverImageUrl: (c as any).coverImageUrl,
         memberCount,
-        isJoined: !!isMember,
+        isJoined: !!membership && membership.status === 'active',
+        userRole: membership?.role,
+        createdBy: c.createdBy.toString(),
+        createdAt: c.createdAt.toISOString(),
+        updatedAt: (c as any).updatedAt?.toISOString() || c.createdAt.toISOString(),
       });
     }
 
     return { communities: dtos, total: dtos.length };
   }
 
-  static async joinCommunity(
+  // Create a new community
+  static async createCommunity(
+    currentUserId: string,
+    data: {
+      name: string;
+      description?: string;
+      category?: string;
+      visibility?: 'public' | 'private';
+      tags?: string[];
+      rules?: string;
+      imageUrl?: string;
+      coverImageUrl?: string;
+    }
+  ): Promise<CommunityDTO> {
+    const currentId = new Types.ObjectId(currentUserId);
+
+    // Create the community
+    const community = await Community.create({
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      visibility: data.visibility || 'public',
+      tags: data.tags || [],
+      rules: data.rules,
+      imageUrl: data.imageUrl,
+      coverImageUrl: data.coverImageUrl,
+      createdBy: currentId,
+    });
+
+    // Add creator as admin
+    await CommunityMember.create({
+      communityId: community._id,
+      userId: currentId,
+      role: 'admin',
+      status: 'active',
+    });
+
+    return {
+      id: community._id.toString(),
+      name: community.name,
+      category: community.category,
+      description: community.description,
+      visibility: (community as any).visibility,
+      tags: (community as any).tags,
+      rules: (community as any).rules,
+      imageUrl: (community as any).imageUrl,
+      coverImageUrl: (community as any).coverImageUrl,
+      memberCount: 1,
+      isJoined: true,
+      userRole: 'admin',
+      createdBy: community.createdBy.toString(),
+      createdAt: community.createdAt.toISOString(),
+      updatedAt: (community as any).updatedAt?.toISOString() || community.createdAt.toISOString(),
+    };
+  }
+
+  // Get community details
+  static async getCommunityDetail(
+    currentUserId: string,
+    communityId: string
+  ): Promise<CommunityDTO> {
+    const currentId = new Types.ObjectId(currentUserId);
+    const commId = new Types.ObjectId(communityId);
+
+    const community = await Community.findById(commId);
+    if (!community) {
+      throw new Error('Community not found');
+    }
+
+    const memberCount = await CommunityMember.countDocuments({
+      communityId: commId,
+      status: 'active',
+    });
+
+    const membership = await CommunityMember.findOne({
+      communityId: commId,
+      userId: currentId,
+    });
+
+    return {
+      id: community._id.toString(),
+      name: community.name,
+      category: community.category,
+      description: community.description,
+      visibility: (community as any).visibility,
+      tags: (community as any).tags,
+      rules: (community as any).rules,
+      imageUrl: (community as any).imageUrl,
+      coverImageUrl: (community as any).coverImageUrl,
+      memberCount,
+      isJoined: !!membership && membership.status === 'active',
+      userRole: membership?.role,
+      createdBy: community.createdBy.toString(),
+      createdAt: community.createdAt.toISOString(),
+      updatedAt: (community as any).updatedAt?.toISOString() || community.createdAt.toISOString(),
+    };
+  }
+
+  // Update community
+  static async updateCommunity(
+    currentUserId: string,
+    communityId: string,
+    data: {
+      name?: string;
+      description?: string;
+      category?: string;
+      visibility?: 'public' | 'private';
+      tags?: string[];
+      rules?: string;
+      imageUrl?: string;
+      coverImageUrl?: string;
+    }
+  ): Promise<CommunityDTO> {
+    const currentId = new Types.ObjectId(currentUserId);
+    const commId = new Types.ObjectId(communityId);
+
+    // Check if user is admin
+    const membership = await CommunityMember.findOne({
+      communityId: commId,
+      userId: currentId,
+      role: 'admin',
+    });
+
+    if (!membership) {
+      throw new Error('Only admins can update community');
+    }
+
+    const community = await Community.findByIdAndUpdate(
+      commId,
+      { $set: { ...data, updatedAt: new Date() } },
+      { new: true }
+    );
+
+    if (!community) {
+      throw new Error('Community not found');
+    }
+
+    const memberCount = await CommunityMember.countDocuments({
+      communityId: commId,
+      status: 'active',
+    });
+
+    return {
+      id: community._id.toString(),
+      name: community.name,
+      category: community.category,
+      description: community.description,
+      visibility: (community as any).visibility,
+      tags: (community as any).tags,
+      rules: (community as any).rules,
+      imageUrl: (community as any).imageUrl,
+      coverImageUrl: (community as any).coverImageUrl,
+      memberCount,
+      isJoined: true,
+      userRole: 'admin',
+      createdBy: community.createdBy.toString(),
+      createdAt: community.createdAt.toISOString(),
+      updatedAt: (community as any).updatedAt?.toISOString() || community.createdAt.toISOString(),
+    };
+  }
+
+  // Delete community
+  static async deleteCommunity(
     currentUserId: string,
     communityId: string
   ): Promise<{ success: boolean; message: string }> {
     const currentId = new Types.ObjectId(currentUserId);
     const commId = new Types.ObjectId(communityId);
 
-    await CommunityMember.updateOne(
-      { communityId: commId, userId: currentId },
-      { $setOnInsert: { communityId: commId, userId: currentId, role: "member" } },
-      { upsert: true }
+    const community = await Community.findById(commId);
+    if (!community) {
+      throw new Error('Community not found');
+    }
+
+    // Check if user is the creator
+    if (community.createdBy.toString() !== currentId.toString()) {
+      throw new Error('Only the creator can delete the community');
+    }
+
+    // Delete all members
+    await CommunityMember.deleteMany({ communityId: commId });
+
+    // Delete community
+    await Community.findByIdAndDelete(commId);
+
+    return { success: true, message: 'Community deleted successfully' };
+  }
+
+  // Get community members
+  static async getCommunityMembers(
+    currentUserId: string,
+    communityId: string,
+    status?: 'active' | 'pending' | 'banned'
+  ): Promise<CommunityMemberDTO[]> {
+    const commId = new Types.ObjectId(communityId);
+
+    const query: any = { communityId: commId };
+    if (status) {
+      query.status = status;
+    }
+
+    const members = await CommunityMember.find(query)
+      .populate('userId', 'name email')
+      .sort({ joinedAt: -1 });
+
+    return members.map(m => ({
+      id: m._id.toString(),
+      userId: (m.userId as any)._id.toString(),
+      userName: (m.userId as any).name,
+      userEmail: (m.userId as any).email,
+      userAvatarUrl: (m.userId as any).avatarUrl,
+      role: m.role,
+      status: m.status,
+      joinedAt: m.joinedAt.toISOString(),
+    }));
+  }
+
+  // Update member role
+  static async updateMemberRole(
+    currentUserId: string,
+    communityId: string,
+    targetUserId: string,
+    role: 'member' | 'moderator' | 'admin'
+  ): Promise<{ success: boolean; message: string }> {
+    const currentId = new Types.ObjectId(currentUserId);
+    const commId = new Types.ObjectId(communityId);
+    const targetId = new Types.ObjectId(targetUserId);
+
+    // Check if current user is admin
+    const currentMembership = await CommunityMember.findOne({
+      communityId: commId,
+      userId: currentId,
+      role: 'admin',
+    });
+
+    if (!currentMembership) {
+      throw new Error('Only admins can update member roles');
+    }
+
+    // Update target member role
+    const updated = await CommunityMember.findOneAndUpdate(
+      { communityId: commId, userId: targetId },
+      { $set: { role } },
+      { new: true }
     );
 
-    return { success: true, message: "Successfully joined community" };
+    if (!updated) {
+      throw new Error('Member not found');
+    }
+
+    return { success: true, message: 'Member role updated successfully' };
+  }
+
+  // Remove member from community
+  static async removeMember(
+    currentUserId: string,
+    communityId: string,
+    targetUserId: string
+  ): Promise<{ success: boolean; message: string }> {
+    const currentId = new Types.ObjectId(currentUserId);
+    const commId = new Types.ObjectId(communityId);
+    const targetId = new Types.ObjectId(targetUserId);
+
+    // Check if current user is admin or moderator
+    const currentMembership = await CommunityMember.findOne({
+      communityId: commId,
+      userId: currentId,
+      role: { $in: ['admin', 'moderator'] },
+    });
+
+    if (!currentMembership) {
+      throw new Error('Only admins and moderators can remove members');
+    }
+
+    // Remove member
+    await CommunityMember.deleteOne({
+      communityId: commId,
+      userId: targetId,
+    });
+
+    return { success: true, message: 'Member removed successfully' };
+  }
+
+  static async joinCommunity(
+    currentUserId: string,
+    communityId: string
+  ): Promise<{ success: boolean; message: string; requiresApproval?: boolean }> {
+    const currentId = new Types.ObjectId(currentUserId);
+    const commId = new Types.ObjectId(communityId);
+
+    // Check if community exists and get its visibility
+    const community = await Community.findById(commId);
+    if (!community) {
+      throw new Error('Community not found');
+    }
+
+    const isPrivate = (community as any).visibility === 'private';
+
+    // Check if already a member
+    const existingMember = await CommunityMember.findOne({
+      communityId: commId,
+      userId: currentId,
+    });
+
+    if (existingMember) {
+      if (existingMember.status === 'active') {
+        return { success: true, message: 'Already a member of this community' };
+      }
+      if (existingMember.status === 'pending') {
+        return { success: true, message: 'Join request already pending', requiresApproval: true };
+      }
+      if (existingMember.status === 'banned') {
+        throw new Error('You are banned from this community');
+      }
+    }
+
+    // For private communities, create pending request
+    if (isPrivate) {
+      await CommunityMember.create({
+        communityId: commId,
+        userId: currentId,
+        role: 'member',
+        status: 'pending',
+        requestedAt: new Date(),
+      });
+
+      return { 
+        success: true, 
+        message: 'Join request sent. Waiting for admin approval.',
+        requiresApproval: true 
+      };
+    }
+
+    // For public communities, join immediately
+    await CommunityMember.create({
+      communityId: commId,
+      userId: currentId,
+      role: 'member',
+      status: 'active',
+    });
+
+    return { success: true, message: 'Successfully joined community' };
+  }
+
+  // Approve join request (admin only)
+  static async approveJoinRequest(
+    currentUserId: string,
+    communityId: string,
+    targetUserId: string
+  ): Promise<{ success: boolean; message: string }> {
+    const currentId = new Types.ObjectId(currentUserId);
+    const commId = new Types.ObjectId(communityId);
+    const targetId = new Types.ObjectId(targetUserId);
+
+    // Check if current user is admin or moderator
+    const currentMembership = await CommunityMember.findOne({
+      communityId: commId,
+      userId: currentId,
+      role: { $in: ['admin', 'moderator'] },
+      status: 'active',
+    });
+
+    if (!currentMembership) {
+      throw new Error('Only admins and moderators can approve requests');
+    }
+
+    // Approve the pending request
+    const updated = await CommunityMember.findOneAndUpdate(
+      { communityId: commId, userId: targetId, status: 'pending' },
+      {
+        $set: {
+          status: 'active',
+          approvedAt: new Date(),
+          approvedBy: currentId,
+        },
+      },
+      { new: true }
+    );
+
+    if (!updated) {
+      throw new Error('Join request not found');
+    }
+
+    return { success: true, message: 'Join request approved' };
+  }
+
+  // Reject join request (admin only)
+  static async rejectJoinRequest(
+    currentUserId: string,
+    communityId: string,
+    targetUserId: string
+  ): Promise<{ success: boolean; message: string }> {
+    const currentId = new Types.ObjectId(currentUserId);
+    const commId = new Types.ObjectId(communityId);
+    const targetId = new Types.ObjectId(targetUserId);
+
+    // Check if current user is admin or moderator
+    const currentMembership = await CommunityMember.findOne({
+      communityId: commId,
+      userId: currentId,
+      role: { $in: ['admin', 'moderator'] },
+      status: 'active',
+    });
+
+    if (!currentMembership) {
+      throw new Error('Only admins and moderators can reject requests');
+    }
+
+    // Delete the pending request
+    await CommunityMember.deleteOne({
+      communityId: commId,
+      userId: targetId,
+      status: 'pending',
+    });
+
+    return { success: true, message: 'Join request rejected' };
   }
 
   static async leaveCommunity(

@@ -118,6 +118,32 @@ class HttpNetworkAPI implements NetworkAPI {
     });
   }
 
+  async createCommunity(data: any): Promise<CommunityActionResponse> {
+    return this.getJson<CommunityActionResponse>('/api/network/community', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getCommunityDetail(communityId: string): Promise<{ community: any }> {
+    return this.getJson<{ community: any }>(`/api/network/community/${communityId}`, {
+      method: 'GET',
+    });
+  }
+
+  async updateCommunity(communityId: string, data: any): Promise<CommunityActionResponse> {
+    return this.getJson<CommunityActionResponse>(`/api/network/community/${communityId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCommunity(communityId: string): Promise<CommunityActionResponse> {
+    return this.getJson<CommunityActionResponse>(`/api/network/community/${communityId}`, {
+      method: 'DELETE',
+    });
+  }
+
   async joinCommunity(communityId: string): Promise<CommunityActionResponse> {
     return this.getJson<CommunityActionResponse>('/api/network/community/join', {
       method: 'POST',
@@ -129,6 +155,38 @@ class HttpNetworkAPI implements NetworkAPI {
     return this.getJson<CommunityActionResponse>('/api/network/community/leave', {
       method: 'POST',
       body: JSON.stringify({ communityId }),
+    });
+  }
+
+  async getCommunityMembers(communityId: string, status?: string): Promise<{ members: any[] }> {
+    const params = status ? `?status=${status}` : '';
+    return this.getJson<{ members: any[] }>(`/api/network/community/${communityId}/members${params}`, {
+      method: 'GET',
+    });
+  }
+
+  async updateMemberRole(communityId: string, memberId: string, role: string): Promise<CommunityActionResponse> {
+    return this.getJson<CommunityActionResponse>(`/api/network/community/${communityId}/member/${memberId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  async removeMember(communityId: string, memberId: string): Promise<CommunityActionResponse> {
+    return this.getJson<CommunityActionResponse>(`/api/network/community/${communityId}/member/${memberId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async approveJoinRequest(communityId: string, memberId: string): Promise<CommunityActionResponse> {
+    return this.getJson<CommunityActionResponse>(`/api/network/community/${communityId}/approve/${memberId}`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectJoinRequest(communityId: string, memberId: string): Promise<CommunityActionResponse> {
+    return this.getJson<CommunityActionResponse>(`/api/network/community/${communityId}/reject/${memberId}`, {
+      method: 'POST',
     });
   }
 

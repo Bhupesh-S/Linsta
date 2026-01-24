@@ -17,7 +17,7 @@ import { profileApi, UserProfileResponse } from '../services/profile.api';
 import { useAuth } from '../context/AuthContext';
 
 const EditProfileScreen = ({ route, navigation }: any) => {
-  const { profileData: initialData } = route.params;
+  const { profileData: initialData } = route?.params || {};
   const { logout } = useAuth();
   
   const [loading, setLoading] = useState(false);

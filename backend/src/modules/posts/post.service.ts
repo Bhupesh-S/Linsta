@@ -527,7 +527,7 @@ export class PostService {
 
   // Helper: Get author name by user ID
   private static async getAuthorName(userId: string): Promise<string> {
-    const User = require("../users/user.model").default;
+    const { User } = require("../users/user.model");
     const user = await User.findById(userId).select("name");
     return user?.name || "Someone";
   }

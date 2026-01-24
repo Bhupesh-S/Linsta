@@ -859,7 +859,7 @@ const ProfileScreen = ({ navigation }: any) => {
       {/* Edit Profile CTA */}
       <TouchableOpacity 
         style={styles.editProfileButton}
-        onPress={() => safeNavigate('EditProfile')}
+        onPress={() => safeNavigate('EditProfile', { profileData })}
       >
         <MaterialIcons name="edit" size={20} color="#fff" />
         <Text style={styles.editProfileButtonText}>Edit Profile</Text>
@@ -1119,7 +1119,7 @@ const ProfileScreen = ({ navigation }: any) => {
           if (Platform.OS !== 'web') {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           }
-          safeNavigate('EditProfile');
+          safeNavigate('EditProfile', { profileData });
         }}
         activeOpacity={0.8}
         accessible={true}

@@ -12,10 +12,14 @@ import {
     TouchableOpacity,
     TextInput,
     Alert,
+    Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
+import { Experience, Education } from '../../types/resume.types';
+import { ExperienceForm, EducationForm, ExperienceCard, EducationCard } from '../../components/resume/ResumeFormComponents';
+import { downloadResumePDF } from '../../utils/resumeUtils';
 
 interface Props {
     navigation?: any;
@@ -26,7 +30,7 @@ type Step = 'personal' | 'experience' | 'education' | 'skills' | 'template' | 'r
 const CreateResumeScreen: React.FC<Props> = ({ navigation }) => {
     const { colors } = useTheme();
     const [currentStep, setCurrentStep] = useState<Step>('personal');
-    const [resumeData, setResumeData] = useState({
+    const [resumeData, setResumeData] = useState<any>({
         title: '',
         personalInfo: {
             name: '',
@@ -35,11 +39,18 @@ const CreateResumeScreen: React.FC<Props> = ({ navigation }) => {
             location: '',
             summary: '',
         },
-        experience: [],
-        education: [],
-        skills: [],
+        experience: [] as Experience[],
+        education: [] as Education[],
+        skills: [] as string[],
         template: 'professional',
     });
+
+    // Modal states
+    const [showExperienceModal, setShowExperienceModal] = useState(false);
+    const [showEducationModal, setShowEducationModal] = useState(false);
+    const [editingExperience, setEditingExperience] = useState<Experience | undefined>();
+    const [editingEducation, setEditingEducation] = useState<Education | undefined>();
+    const [skillInput, setSkillInput] = useState('');
 
     const steps: { id: Step; label: string; icon: string }[] = [
         { id: 'personal', label: 'Personal Info', icon: 'person' },
@@ -69,17 +80,153 @@ const CreateResumeScreen: React.FC<Props> = ({ navigation }) => {
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         Alert.alert(
             'Resume Created!',
-            'Your resume has been created successfully. AI analysis will be available shortly.',
+            'Your resume has been created successfully.',
             [
+                {
+                    text: 'Download PDF',
+                    onPress: async () => {
+                        const success = await downloadResumePDF(resumeData, resumeData.template);
+                        if (success) {
+                            Alert.alert('Success', 'Resume downloaded successfully!');
+                        } else {
+                            Alert.alert('Error', 'Failed to download resume');
+                        }
+                    },
+                },
                 {
                     text: 'View Resume',
                     onPress: () => navigation?.navigate?.('ResumeBuilder'),
                 },
             ]
         );
+    };
+
+    // Experience handlers
+    const handleAddExperience = () => {
+        setEditingExperience(undefined);
+        setShowExperienceModal(true);
+    };
+
+    const handleEditExperience = (experience: Experience) => {
+        setEditingExperience(experience);
+        setShowExperienceModal(true);
+    };
+
+    const handleSaveExperience = (experience: Experience) => {
+        if (editingExperience) {
+            setResumeData({
+                ...resumeData,
+                experience: resumeData.experience.map((exp: Experience) =>
+                    exp.id === experience.id ? experience : exp
+                ),
+            });
+        } else {
+            setResumeData({
+                ...resumeData,
+                experience: [...resumeData.experience, experience],
+            });
+        }
+        setShowExperienceModal(false);
+        setEditingExperience(undefined);
+    };
+
+    const handleDeleteExperience = (id: string) => {
+        Alert.alert(
+            'Delete Experience',
+            'Are you sure you want to delete this experience?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => {
+                        setResumeData({
+                            ...resumeData,
+                            experience: resumeData.experience.filter((exp: Experience) => exp.id !== id),
+                        });
+                    },
+                },
+            ]
+        );
+    };
+
+    // Education handlers
+    const handleAddEducation = () => {
+        setEditingEducation(undefined);
+        setShowEducationModal(true);
+    };
+
+    const handleEditEducation = (education: Education) => {
+        setEditingEducation(education);
+        setShowEducationModal(true);
+    };
+
+    const handleSaveEducation = (education: Education) => {
+        if (editingEducation) {
+            setResumeData({
+                ...resumeData,
+                education: resumeData.education.map((edu: Education) =>
+                    edu.id === education.id ? education : edu
+                ),
+            });
+        } else {
+            setResumeData({
+                ...resumeData,
+                education: [...resumeData.education, education],
+            });
+        }
+        setShowEducationModal(false);
+        setEditingEducation(undefined);
+    };
+
+    const handleDeleteEducation = (id: string) => {
+        Alert.alert(
+            'Delete Education',
+            'Are you sure you want to delete this education?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => {
+                        setResumeData({
+                            ...resumeData,
+                            education: resumeData.education.filter((edu: Education) => edu.id !== id),
+                        });
+                    },
+                },
+            ]
+        );
+    };
+
+    // Skills handlers
+    const handleAddSkill = () => {
+        if (skillInput.trim()) {
+            setResumeData({
+                ...resumeData,
+                skills: [...resumeData.skills, skillInput.trim()],
+            });
+            setSkillInput('');
+        }
+    };
+
+    const handleRemoveSkill = (skill: string) => {
+        setResumeData({
+            ...resumeData,
+            skills: resumeData.skills.filter((s: string) => s !== skill),
+        });
+    };
+
+    const handleDownloadPDF = async () => {
+        const success = await downloadResumePDF(resumeData, resumeData.template);
+        if (success) {
+            Alert.alert('Success', 'Resume PDF generated and ready to share!');
+        } else {
+            Alert.alert('Error', 'Failed to generate PDF. Please try again.');
+        }
     };
 
     const renderPersonalInfo = () => (
@@ -197,17 +344,31 @@ const CreateResumeScreen: React.FC<Props> = ({ navigation }) => {
             <TouchableOpacity
                 style={[styles.addButton, { backgroundColor: colors.primary }]}
                 activeOpacity={0.8}
+                onPress={handleAddExperience}
             >
                 <Ionicons name="add-circle" size={24} color="#FFFFFF" />
                 <Text style={styles.addButtonText}>Add Experience</Text>
             </TouchableOpacity>
 
-            <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
-                <Ionicons name="briefcase-outline" size={48} color={colors.textSecondary} />
-                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                    No experience added yet
-                </Text>
-            </View>
+            {resumeData.experience.length > 0 ? (
+                <View>
+                    {resumeData.experience.map((exp: Experience) => (
+                        <ExperienceCard
+                            key={exp.id}
+                            experience={exp}
+                            onEdit={handleEditExperience}
+                            onDelete={handleDeleteExperience}
+                        />
+                    ))}
+                </View>
+            ) : (
+                <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
+                    <Ionicons name="briefcase-outline" size={48} color={colors.textSecondary} />
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                        No experience added yet
+                    </Text>
+                </View>
+            )}
         </View>
     );
 
@@ -221,17 +382,31 @@ const CreateResumeScreen: React.FC<Props> = ({ navigation }) => {
             <TouchableOpacity
                 style={[styles.addButton, { backgroundColor: colors.primary }]}
                 activeOpacity={0.8}
+                onPress={handleAddEducation}
             >
                 <Ionicons name="add-circle" size={24} color="#FFFFFF" />
                 <Text style={styles.addButtonText}>Add Education</Text>
             </TouchableOpacity>
 
-            <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
-                <Ionicons name="school-outline" size={48} color={colors.textSecondary} />
-                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                    No education added yet
-                </Text>
-            </View>
+            {resumeData.education.length > 0 ? (
+                <View>
+                    {resumeData.education.map((edu: Education) => (
+                        <EducationCard
+                            key={edu.id}
+                            education={edu}
+                            onEdit={handleEditEducation}
+                            onDelete={handleDeleteEducation}
+                        />
+                    ))}
+                </View>
+            ) : (
+                <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
+                    <Ionicons name="school-outline" size={48} color={colors.textSecondary} />
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                        No education added yet
+                    </Text>
+                </View>
+            )}
         </View>
     );
 
@@ -243,12 +418,38 @@ const CreateResumeScreen: React.FC<Props> = ({ navigation }) => {
             </Text>
 
             <View style={styles.inputGroup}>
-                <TextInput
-                    style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-                    placeholder="Type a skill and press enter..."
-                    placeholderTextColor={colors.textTertiary}
-                />
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TextInput
+                        style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border, flex: 1 }]}
+                        placeholder="Type a skill..."
+                        placeholderTextColor={colors.textTertiary}
+                        value={skillInput}
+                        onChangeText={setSkillInput}
+                        onSubmitEditing={handleAddSkill}
+                    />
+                    <TouchableOpacity
+                        style={[styles.addSkillButton, { backgroundColor: colors.primary }]}
+                        onPress={handleAddSkill}
+                    >
+                        <Ionicons name="add" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                </View>
             </View>
+
+            {resumeData.skills.length > 0 && (
+                <View style={styles.skillTags}>
+                    {resumeData.skills.map((skill: string, index: number) => (
+                        <TouchableOpacity
+                            key={index}
+                            style={[styles.skillTag, { backgroundColor: colors.primary + '20', borderColor: colors.primary }]}
+                            onPress={() => handleRemoveSkill(skill)}
+                        >
+                            <Text style={[styles.skillTagText, { color: colors.primary }]}>{skill}</Text>
+                            <Ionicons name="close" size={16} color={colors.primary} />
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            )}
 
             <View style={styles.skillSuggestions}>
                 <Text style={[styles.suggestionsLabel, { color: colors.textSecondary }]}>
@@ -259,6 +460,11 @@ const CreateResumeScreen: React.FC<Props> = ({ navigation }) => {
                         <TouchableOpacity
                             key={skill}
                             style={[styles.skillTag, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                            onPress={() => {
+                                if (!resumeData.skills.includes(skill)) {
+                                    setResumeData({ ...resumeData, skills: [...resumeData.skills, skill] });
+                                }
+                            }}
                         >
                             <Text style={[styles.skillTagText, { color: colors.text }]}>{skill}</Text>
                             <Ionicons name="add" size={16} color={colors.primary} />
@@ -327,6 +533,27 @@ const CreateResumeScreen: React.FC<Props> = ({ navigation }) => {
                     </Text>
                 </View>
                 <View style={styles.reviewItem}>
+                    <Ionicons name="briefcase" size={20} color={colors.primary} />
+                    <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>Experience:</Text>
+                    <Text style={[styles.reviewValue, { color: colors.text }]}>
+                        {resumeData.experience.length} {resumeData.experience.length === 1 ? 'entry' : 'entries'}
+                    </Text>
+                </View>
+                <View style={styles.reviewItem}>
+                    <Ionicons name="school" size={20} color={colors.primary} />
+                    <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>Education:</Text>
+                    <Text style={[styles.reviewValue, { color: colors.text }]}>
+                        {resumeData.education.length} {resumeData.education.length === 1 ? 'entry' : 'entries'}
+                    </Text>
+                </View>
+                <View style={styles.reviewItem}>
+                    <Ionicons name="code-slash" size={20} color={colors.primary} />
+                    <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>Skills:</Text>
+                    <Text style={[styles.reviewValue, { color: colors.text }]}>
+                        {resumeData.skills.length} skills
+                    </Text>
+                </View>
+                <View style={styles.reviewItem}>
                     <Ionicons name="color-palette" size={20} color={colors.primary} />
                     <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>Template:</Text>
                     <Text style={[styles.reviewValue, { color: colors.text }]}>
@@ -335,12 +562,20 @@ const CreateResumeScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
             </View>
 
+            <TouchableOpacity
+                style={[styles.downloadButton, { backgroundColor: colors.primary }]}
+                onPress={handleDownloadPDF}
+            >
+                <Ionicons name="download" size={20} color="#FFFFFF" />
+                <Text style={styles.downloadButtonText}>Download Resume PDF</Text>
+            </TouchableOpacity>
+
             <View style={[styles.aiPreview, { backgroundColor: '#10B98120' }]}>
                 <Ionicons name="sparkles" size={24} color="#10B981" />
                 <View style={styles.aiPreviewText}>
-                    <Text style={[styles.aiPreviewTitle, { color: colors.text }]}>AI Analysis Ready</Text>
+                    <Text style={[styles.aiPreviewTitle, { color: colors.text }]}>Ready to Download</Text>
                     <Text style={[styles.aiPreviewHint, { color: colors.textSecondary }]}>
-                        Your resume will be analyzed by AI after creation
+                        Your resume is ready to be downloaded as a PDF
                     </Text>
                 </View>
             </View>
@@ -452,6 +687,46 @@ const CreateResumeScreen: React.FC<Props> = ({ navigation }) => {
                     <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
             </View>
+
+            {/* Experience Modal */}
+            <Modal
+                visible={showExperienceModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowExperienceModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            <ExperienceForm
+                                onSave={handleSaveExperience}
+                                onCancel={() => setShowExperienceModal(false)}
+                                initialData={editingExperience}
+                            />
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Education Modal */}
+            <Modal
+                visible={showEducationModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowEducationModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            <EducationForm
+                                onSave={handleSaveEducation}
+                                onCancel={() => setShowEducationModal(false)}
+                                initialData={editingEducation}
+                            />
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -512,18 +787,19 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     stepsContainer: {
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        gap: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        gap: 6,
     },
     stepChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
         borderRadius: 20,
-        borderWidth: 1.5,
+        borderWidth: 1,
         gap: 6,
+        minHeight: 32,
     },
     stepChipText: {
         fontSize: 13,
@@ -729,6 +1005,38 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+    addSkillButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    downloadButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingVertical: 14,
+        borderRadius: 12,
+        marginBottom: 16,
+    },
+    downloadButtonText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 20,
+        maxHeight: '90%',
     },
 });
 

@@ -47,20 +47,10 @@ const ResumeBuilderHome: React.FC<Props> = ({ navigation }) => {
                         <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Resume Builder</Text>
-                    <TouchableOpacity style={styles.settingsButton}>
-                        <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
-                    </TouchableOpacity>
+                    <View style={styles.settingsButton} />
                 </View>
 
-                {/* Overall Score */}
-                <View style={styles.scoreContainer}>
-                    <Text style={styles.scoreLabel}>Your Best Resume Score</Text>
-                    <Text style={styles.scoreValue}>92/100</Text>
-                    <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: '92%' }]} />
-                    </View>
-                    <Text style={styles.scoreHint}>Excellent! ATS-optimized</Text>
-                </View>
+
             </LinearGradient>
 
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -68,17 +58,6 @@ const ResumeBuilderHome: React.FC<Props> = ({ navigation }) => {
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
                     <View style={styles.actionsGrid}>
-                        <TouchableOpacity
-                            style={[styles.actionCard, { backgroundColor: colors.surface }]}
-                            activeOpacity={0.7}
-                            onPress={() => navigation?.navigate?.('AIAnalysis', { resume: resumes[0] })}
-                        >
-                            <View style={[styles.actionIcon, { backgroundColor: '#10B98120' }]}>
-                                <Ionicons name="sparkles" size={24} color="#10B981" />
-                            </View>
-                            <Text style={[styles.actionLabel, { color: colors.text }]}>AI Analyze</Text>
-                        </TouchableOpacity>
-
                         <TouchableOpacity
                             style={[styles.actionCard, { backgroundColor: colors.surface }]}
                             activeOpacity={0.7}
@@ -93,12 +72,12 @@ const ResumeBuilderHome: React.FC<Props> = ({ navigation }) => {
                         <TouchableOpacity
                             style={[styles.actionCard, { backgroundColor: colors.surface }]}
                             activeOpacity={0.7}
-                            onPress={() => navigation?.navigate?.('SkillGap', { resume: resumes[0] })}
+                            onPress={() => navigation?.navigate?.('CreateResume')}
                         >
-                            <View style={[styles.actionIcon, { backgroundColor: '#F59E0B20' }]}>
-                                <Ionicons name="analytics" size={24} color="#F59E0B" />
+                            <View style={[styles.actionIcon, { backgroundColor: '#10B98120' }]}>
+                                <Ionicons name="add-circle" size={24} color="#10B981" />
                             </View>
-                            <Text style={[styles.actionLabel, { color: colors.text }]}>Skill Gap</Text>
+                            <Text style={[styles.actionLabel, { color: colors.text }]}>Create Resume</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -288,8 +267,8 @@ const styles = StyleSheet.create({
     },
     actionCard: {
         flex: 1,
-        padding: 16,
-        borderRadius: 16,
+        padding: 12,
+        borderRadius: 12,
         alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -298,15 +277,15 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     actionIcon: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 8,
     },
     actionLabel: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '600',
         textAlign: 'center',
     },

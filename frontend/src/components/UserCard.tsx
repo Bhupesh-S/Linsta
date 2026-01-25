@@ -1,7 +1,7 @@
 // UserCard Component - Displays user information with connection button
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NetworkUser } from '../types/network.types';
 
@@ -63,7 +63,14 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onConnect, onViewProfi
       <View style={styles.content}>
         {/* Avatar */}
         <View style={styles.avatar}>
-          <Ionicons name="person" size={28} color="#0a66c2" />
+          {user.avatarUrl ? (
+            <Image 
+              source={{ uri: user.avatarUrl }} 
+              style={styles.profileImage}
+            />
+          ) : (
+            <Ionicons name="person" size={28} color="#0a66c2" />
+          )}
         </View>
 
         {/* User Info */}
@@ -119,6 +126,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  profileImage: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
   },
   userInfo: {
     flex: 1,

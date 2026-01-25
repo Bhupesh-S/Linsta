@@ -4,6 +4,7 @@ import { Schema, model, Document, Types } from "mongoose";
 export interface IPost extends Document {
   authorId: Types.ObjectId;
   eventId?: Types.ObjectId;
+  communityId?: Types.ObjectId;
   caption: string;
   createdAt: Date;
   updatedAt: Date;
@@ -19,6 +20,11 @@ const postSchema = new Schema<IPost>(
     eventId: {
       type: Schema.Types.ObjectId,
       ref: "Event",
+      index: true,
+    },
+    communityId: {
+      type: Schema.Types.ObjectId,
+      ref: "Community",
       index: true,
     },
     caption: {

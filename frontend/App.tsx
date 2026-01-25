@@ -8,24 +8,31 @@ import { ArticleProvider } from './src/context/ArticleContext';
 import { EventProvider } from './src/context/EventContext';
 import { MessageProvider } from './src/context/MessageContext';
 
+
+console.log('✅ App.tsx loaded');
+
 export default function App() {
+  console.log('🚀 App component rendering...');
+  
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <ThemeProvider>
-          <StoryProvider>
-            <ArticleProvider>
-              <EventProvider>
-                <MessageProvider>
-                  <StatusBar style="auto" />
-                  <AppNavigator />
-                </MessageProvider>
-              </EventProvider>
-            </ArticleProvider>
-          </StoryProvider>
-        </ThemeProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+
+      <SafeAreaProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <StoryProvider>
+              <ArticleProvider>
+                <EventProvider>
+                  <MessageProvider>
+                    <StatusBar style="auto" />
+                    <AppNavigator />
+                  </MessageProvider>
+                </EventProvider>
+              </ArticleProvider>
+            </StoryProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    
   );
 }
 

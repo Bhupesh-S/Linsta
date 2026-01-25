@@ -47,6 +47,7 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
     rejectRequest,
     joinCommunity,
     leaveCommunity,
+    loadCommunities,
     checkMessagingPermission,
     connections,
   } = useNetwork();
@@ -54,6 +55,7 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   const { openConversationWithUser } = useMessages();
 
   const [activeTab, setActiveTab] = useState<TabType>('suggestions');
+  const [communityTab, setCommunityTab] = useState<'explore' | 'my'>('explore');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>({});
@@ -83,6 +85,13 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
   React.useEffect(() => {
     if (activeTab === 'jobs' && jobs.length === 0 && !jobsLoading) {
       loadJobs();
+    }
+  }, [activeTab]);
+
+  // Load communities when communities tab is active
+  React.useEffect(() => {
+    if (activeTab === 'communities') {
+      loadCommunities();
     }
   }, [activeTab]);
 
@@ -282,22 +291,164 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
         );
 
       case 'communities':
+        const filteredCommunities = communities.filter(community => {
+          // Filter by tab (Explore or My Communities)
+          const matchesTab = communityTab === 'explore' ? !community.isJoined : community.isJoined;
+          
+          // Filter by search query
+          const matchesSearch = searchQuery.trim() === '' || 
+            community.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            community.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            community.category.toLowerCase().includes(searchQuery.toLowerCase());
+          
+          return matchesTab && matchesSearch;
+        });
+
         return (
           <View>
-            {communities.length > 0 ? (
-              communities.map(community => (
-                <CommunityCard
-                  key={community.id}
-                  community={community}
-                  onJoin={joinCommunity}
-                  onLeave={leaveCommunity}
-                />
-              ))
+            {loading && communities.length === 0 ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0A66C2" />
+                <Text style={styles.loadingText}>Loading communities...</Text>
+              </View>
             ) : (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="people-outline" size={64} color="#d1d5db" />
-                <Text style={styles.emptyText}>No communities available</Text>
-                <Text style={styles.emptySubtext}>Join communities to connect with like-minded professionals</Text>
+              <View>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>{filteredCommunities.length} Communities</Text>
+                  <TouchableOpacity
+                    onPress={() => navigation?.navigate('CreateCommunity')}
+                    style={styles.createButton}
+                  >
+                    <Ionicons name="add-circle" size={20} color="#0A66C2" />
+                    <Text style={styles.createButtonText}>Create</Text>
+                  </TouchableOpacity>
+                </View>
+                {filteredCommunities.length > 0 ? (
+                  filteredCommunities.map(community => (
+                  <TouchableOpacity
+                    key={community.id}
+                    style={styles.communityItem}
+                    onPress={() => navigation?.navigate('CommunityDetail', { community })}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.communityCard}>
+                      <View style={styles.communityHeader}>
+                        {community.imageUrl ? (
+                          <View style={styles.communityAvatarContainer}>
+                            <Text style={styles.communityAvatar}>{community.name.charAt(0).toUpperCase()}</Text>
+                          </View>
+                        ) : (
+                          <View style={styles.communityAvatarPlaceholder}>
+                            <Ionicons name="people" size={24} color="#9ca3af" />
+                          </View>
+                        )}
+                        <View style={styles.communityInfo}>
+                          <View style={styles.communityTitleRow}>
+                            <Text style={styles.communityName} numberOfLines={1}>
+                              {community.name}
+                            </Text>
+                            <View
+                              style={[
+                                styles.visibilityBadge,
+                                {
+                                  backgroundColor:
+                                    community.visibility === 'private' ? '#fef3c7' : '#dbeafe',
+                                },
+                              ]}
+                            >
+                              <Ionicons
+                                name={community.visibility === 'private' ? 'lock-closed-outline' : 'globe-outline'}
+                                size={20}
+                                color={community.visibility === 'private' ? '#92400e' : '#1e40af'}
+                              />
+                            </View>
+                          </View>
+                          <Text style={styles.memberCount}>
+                            {community.memberCount} {community.memberCount === 1 ? 'member' : 'members'} · {community.category}
+                          </Text>
+                          {community.tags && community.tags.length > 0 && (
+                            <View style={styles.tagsRow}>
+                              {community.tags.slice(0, 2).map((tag, index) => (
+                                <View key={index} style={styles.tag}>
+                                  <Text style={styles.tagText}>{tag}</Text>
+                                </View>
+                              ))}
+                              {community.tags.length > 2 && (
+                                <Text style={styles.moreTagsText}>+{community.tags.length - 2}</Text>
+                              )}
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.joinButton,
+                        {
+                          backgroundColor: community.isJoined ? '#fff' : '#0A66C2',
+                          borderColor: community.isJoined ? '#0A66C2' : 'transparent',
+                          borderWidth: community.isJoined ? 1 : 0,
+                        },
+                      ]}
+                      onPress={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          if (community.isJoined) {
+                            await leaveCommunity(community.id);
+                            Alert.alert('Success', 'Left community');
+                          } else {
+                            const result = await joinCommunity(community.id);
+                            if (result.requiresApproval) {
+                              Alert.alert('Request Sent', result.message);
+                            } else {
+                              Alert.alert('Success', result.message || 'Joined community');
+                            }
+                          }
+                        } catch (error: any) {
+                          Alert.alert('Error', error.message || 'Action failed');
+                        }
+                      }}
+                      disabled={loading}
+                    >
+                      <Text
+                        style={[
+                          styles.joinButtonText,
+                          { color: community.isJoined ? '#0A66C2' : '#fff' },
+                        ]}
+                      >
+                        {loading ? '...' : community.isJoined ? 'Joined' : 'Join'}
+                      </Text>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="people-outline" size={64} color="#d1d5db" />
+                    <Text style={styles.emptyText}>
+                      {communityTab === 'my' 
+                        ? "You haven't joined any communities yet" 
+                        : searchQuery.trim() 
+                          ? 'No communities found' 
+                          : 'No communities available'}
+                    </Text>
+                    <Text style={styles.emptySubtext}>
+                      {communityTab === 'my' 
+                        ? 'Switch to Explore to find communities!' 
+                        : searchQuery.trim() 
+                          ? 'Try a different search term' 
+                          : 'Be the first to create one!'}
+                    </Text>
+                    {communityTab === 'explore' && !searchQuery.trim() && (
+                      <TouchableOpacity
+                        style={styles.emptyActionButton}
+                        onPress={() => navigation?.navigate('CreateCommunity')}
+                      >
+                        <Ionicons name="add-circle-outline" size={20} color="#0A66C2" />
+                        <Text style={styles.emptyActionButtonText}>Create Community</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -416,6 +567,48 @@ export const NetworkScreen: React.FC<NetworkScreenProps> = ({ navigation }) => {
           )}
         </View>
       </View>
+
+      {/* Community Sub-Tabs */}
+      {activeTab === 'communities' && (
+        <View style={styles.communityTabsContainer}>
+          <TouchableOpacity
+            onPress={() => {
+              setCommunityTab('explore');
+              setSearchQuery('');
+            }}
+            style={[
+              styles.communityTab,
+              communityTab === 'explore' && styles.activeCommunityTab
+            ]}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.communityTabText,
+              communityTab === 'explore' && styles.activeCommunityTabText
+            ]}>
+              Explore
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              setCommunityTab('my');
+              setSearchQuery('');
+            }}
+            style={[
+              styles.communityTab,
+              communityTab === 'my' && styles.activeCommunityTab
+            ]}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.communityTabText,
+              communityTab === 'my' && styles.activeCommunityTabText
+            ]}>
+              My Communities
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Content */}
       <ScrollView
@@ -550,6 +743,7 @@ const styles = StyleSheet.create({
   banner: {
     marginHorizontal: 16,
     marginTop: 8,
+    marginBottom: 12,
     borderRadius: 12,
     overflow: 'hidden',
     ...Platform.select({
@@ -812,5 +1006,180 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#111827',
     marginBottom: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#f9fafb',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#e0f2fe',
+  },
+  createButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0A66C2',
+  },
+  communityItem: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  communityCard: {
+    padding: 16,
+  },
+  communityHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  communityAvatarContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#0A66C2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  communityAvatar: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  communityAvatarPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#e5e7eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  communityInfo: {
+    flex: 1,
+  },
+  communityTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  communityName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    flex: 1,
+  },
+  visibilityBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  memberCount: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginBottom: 8,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  tag: {
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  tagText: {
+    color: '#0369a1',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  moreTagsText: {
+    fontSize: 11,
+    color: '#9ca3af',
+    fontWeight: '500',
+  },
+  joinButton: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  joinButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    paddingVertical: 48,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  emptyActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#e0f2fe',
+    borderRadius: 8,
+  },
+  emptyActionButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0A66C2',
+  },
+  communityTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  communityTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeCommunityTab: {
+    borderBottomColor: '#0A66C2',
+  },
+  communityTabText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  activeCommunityTabText: {
+    color: '#0A66C2',
+    fontWeight: '600',
   },
 });

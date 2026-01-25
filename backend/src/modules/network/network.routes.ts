@@ -25,8 +25,19 @@ router.get("/requests", NetworkController.getConnectionRequests);
 
 // Communities
 router.get("/communities", NetworkController.getCommunities);
+router.post("/community", NetworkController.createCommunity);
+router.get("/community/:id", NetworkController.getCommunityDetail);
+router.put("/community/:id", NetworkController.updateCommunity);
+router.delete("/community/:id", NetworkController.deleteCommunity);
 router.post("/community/join", NetworkController.joinCommunity);
 router.post("/community/leave", NetworkController.leaveCommunity);
+
+// Community Members
+router.get("/community/:id/members", NetworkController.getCommunityMembers);
+router.put("/community/:id/member/:memberId/role", NetworkController.updateMemberRole);
+router.delete("/community/:id/member/:memberId", NetworkController.removeMember);
+router.post("/community/:id/approve/:memberId", NetworkController.approveJoinRequest);
+router.post("/community/:id/reject/:memberId", NetworkController.rejectJoinRequest);
 
 // Messaging permissions
 router.get("/permissions/:userId", NetworkController.checkMessagingPermission);

@@ -24,18 +24,22 @@ import CreateContentModal from '../../components/CreateContentModal';
 import { mockStories, mockPosts } from '../../utils/mockData';
 import { postsApi, Post } from '../../services/posts.api';
 import { storiesApi, UserStories } from '../../services/stories.api';
+import { profileApi } from '../../services/profile.api';
+import { useAuth } from '../../context/AuthContext';
 
 interface HomeScreenProps {
   navigation?: any;
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
+  const { user } = useAuth();
   const [activeReelId, setActiveReelId] = useState<string | null>(null);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [stories, setStories] = useState<UserStories[]>([]);
+  const [userProfileImage, setUserProfileImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingStories, setLoadingStories] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -45,9 +49,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     const initializeFeed = async () => {
       await fetchPosts();
       await fetchStories();
+      await fetchUserProfile();
     };
     initializeFeed();
   }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      if (user?.id) {
+        const profileData = await profileApi.getProfile(user.id);
+        setUserProfileImage(profileData.profile?.profileImageUrl || null);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch user profile:', error);
+    }
+  };
 
   const fetchPosts = async () => {
     try {
@@ -81,12 +97,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchPosts(), fetchStories()]);
+    await Promise.all([fetchPosts(), fetchStories(), fetchUserProfile()]);
     setRefreshing(false);
   };
 
   const handleStoryPress = (index: number) => {
     setSelectedStoryIndex(index);
+    setShowStoryViewer(true);
+  };
+
+  const handleYourStoryPress = () => {
+    // Set index to -1 to indicate user's own story
+    setSelectedStoryIndex(-1);
     setShowStoryViewer(true);
   };
 
@@ -195,9 +217,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </View>
       ) : (
         <StoryCarousel 
-          stories={stories.length > 0 ? stories : []} 
+          stories={stories.filter(s => !s.isOwn)} 
+          userStories={stories.find(s => s.isOwn)?.stories || []}
           onStoryPress={handleStoryPress}
-          onAddStory={() => navigation?.navigate?.('CreatePost', { mode: 'story' })} 
+          onYourStoryPress={handleYourStoryPress}
+          onAddStory={() => navigation?.navigate?.('CreatePost', { mode: 'story' })}
+          currentUserName={user?.name}
+          currentUserProfileImage={userProfileImage}
         />
       )}
 
@@ -252,8 +278,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       {/* Story Viewer */}
       <StoryViewer
         visible={showStoryViewer}
-        stories={stories}
-        initialIndex={selectedStoryIndex}
+        stories={selectedStoryIndex === -1 
+          ? [{ 
+              user: { 
+                id: user?.id || '', 
+                name: user?.name || '', 
+                email: user?.email || '', 
+                avatar: 'person-circle',
+                profileImageUrl: userProfileImage 
+              }, 
+              stories: stories.find(s => s.isOwn)?.stories || [], 
+              isOwn: true 
+            }]
+          : stories.filter(s => !s.isOwn)
+        }
+        initialIndex={selectedStoryIndex === -1 ? 0 : selectedStoryIndex}
         onClose={() => setShowStoryViewer(false)}
       />
 

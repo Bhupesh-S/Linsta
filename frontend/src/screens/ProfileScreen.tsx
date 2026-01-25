@@ -31,7 +31,7 @@ const COVER_HEIGHT = 150;
 const PROFILE_SIZE = 110;
 
 const ProfileScreen = ({ navigation }: any) => {
-  const { user: authUser } = useAuth();
+  const { user: authUser, logout } = useAuth();
   const [profileData, setProfileData] = useState<UserProfileResponse | null>(null);
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
@@ -275,7 +275,7 @@ const ProfileScreen = ({ navigation }: any) => {
           )}
         </TouchableOpacity>
 
-        {/* Edit Button */}
+        {/* Settings Button */}
         <TouchableOpacity 
           style={styles.editButton}
           onPress={() => navigation.navigate('EditProfile', { profileData })}
@@ -1242,7 +1242,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#0A66C2',
     borderRadius: 20,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
   },
   nameSection: {

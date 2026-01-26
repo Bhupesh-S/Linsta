@@ -16,6 +16,8 @@ import reportRoutes from "./modules/reports/report.routes";
 import closeFriendRoutes from "./modules/closefriends/closefriend.routes";
 import postShareRoutes from "./modules/posts/postshare.routes";
 import commentExtendedRoutes from "./modules/posts/commentextended.routes";
+import groupRoutes from "./modules/groups/group.routes";
+import jobRoutes from "./modules/jobs/job.routes";
 import { requestLogger } from "./middlewares/requestLogger.middleware";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler.middleware";
 import { rateLimitMiddleware } from "./middlewares/rateLimit.middleware";
@@ -62,6 +64,8 @@ app.use("/api/stories", storyRoutes);
 app.use("/api/stories", storyHighlightRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/groups", groupRoutes);
+app.use("/api/jobs", jobRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/reports", reportRoutes);
 

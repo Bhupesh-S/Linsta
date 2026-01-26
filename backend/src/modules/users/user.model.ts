@@ -6,7 +6,8 @@ export interface IUser extends Document {
   email: string;
   password?: string;
   googleId?: string;
-  authProvider: "local" | "google";
+  linkedinId?: string;
+  authProvider: "local" | "google" | "linkedin";
   createdAt: Date;
 }
 
@@ -29,9 +30,13 @@ const userSchema = new Schema<IUser>({
     type: String,
     sparse: true,
   },
+  linkedinId: {
+    type: String,
+    sparse: true,
+  },
   authProvider: {
     type: String,
-    enum: ["local", "google"],
+    enum: ["local", "google", "linkedin"],
     default: "local",
   },
   createdAt: {

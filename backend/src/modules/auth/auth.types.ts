@@ -14,6 +14,10 @@ export interface GoogleLoginRequest {
   idToken: string;
 }
 
+export interface LinkedinLoginRequest {
+  code: string;
+}
+
 export interface AuthResponse {
   token: string;
   user: {

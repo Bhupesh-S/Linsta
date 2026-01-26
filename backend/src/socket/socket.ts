@@ -3,6 +3,7 @@ import { Server as SocketIOServer, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { handleChatEvents } from "./chat.socket";
 import { initializeNotificationSocket } from "./notification.socket";
+import { setupGroupSocket } from "./group.socket";
 import { setSocketIO } from "../modules/notifications/notification.service";
 
 // Map to track connected users: userId -> socketId
@@ -53,6 +54,9 @@ export const initializeSocket = (server: HTTPServer): SocketIOServer => {
 
     // Initialize notification socket
     initializeNotificationSocket(socket, io);
+
+    // Initialize group socket
+    setupGroupSocket(io);
 
     // Disconnect handler
     socket.on("disconnect", () => {

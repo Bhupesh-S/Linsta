@@ -8,4 +8,8 @@ router.post("/register", AuthController.register);
 router.post("/login", AuthController.login);
 router.post("/google", AuthController.googleLogin);
 
+// LinkedIn OAuth routes
+router.get("/linkedin", AuthController.getLinkedinAuth);
+router.get("/linkedin/callback", AuthController.linkedinCallback);
+
 export default router;

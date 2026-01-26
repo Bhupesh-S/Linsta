@@ -5,6 +5,7 @@ export interface IPost extends Document {
   authorId: Types.ObjectId;
   eventId?: Types.ObjectId;
   caption: string;
+  mentions?: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +26,12 @@ const postSchema = new Schema<IPost>(
       required: true,
       trim: true,
     },
+    mentions: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,

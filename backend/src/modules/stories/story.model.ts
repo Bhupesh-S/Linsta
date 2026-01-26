@@ -6,6 +6,7 @@ export interface IStory extends Document {
   mediaType: "image" | "video";
   mediaUrl: string;
   caption?: string;
+  visibility: "public" | "close_friends";
   viewsCount: number;
   likesCount: number;
   commentsCount: number;
@@ -32,6 +33,11 @@ const storySchema = new Schema<IStory>(
     caption: {
       type: String,
       trim: true,
+    },
+    visibility: {
+      type: String,
+      enum: ["public", "close_friends"],
+      default: "public",
     },
     viewsCount: {
       type: Number,

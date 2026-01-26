@@ -5,6 +5,8 @@ export interface IComment extends Document {
   postId: Types.ObjectId;
   userId: Types.ObjectId;
   text: string;
+  mentions?: Types.ObjectId[];
+  parentCommentId?: Types.ObjectId;
   createdAt: Date;
 }
 
@@ -25,6 +27,16 @@ const commentSchema = new Schema<IComment>(
       required: true,
       trim: true,
     },
+    mentions: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    parentCommentId: {
+      type: Schema.Types.ObjectId,
+      ref: "Comment",
+    },
   },
   {
     timestamps: true,
@@ -33,5 +45,7 @@ const commentSchema = new Schema<IComment>(
 
 commentSchema.index({ postId: 1, createdAt: -1 });
 commentSchema.index({ userId: 1 });
+commentSchema.index({ parentCommentId: 1, createdAt: -1 });
+commentSchema.index({ postId: 1, parentCommentId: 1 });
 
 export const Comment = model<IComment>("Comment", commentSchema);
